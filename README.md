@@ -4,7 +4,7 @@
   <img src='IEP_logo_compliant_colors.jpg' height="300" />
 </p>
 
-## Code and analyses for identifying sub-community assemblages and representative species collected by IEP long-term monitoring surveys using midwater and otter trawl gears
+## Code and analyses for identifying sub-community assemblages and representative species collected by IEP long-term monitoring surveys using midwater and otter trawl gears (Chapter 5)
 
 NOTE: Data integration code and data (described in chapter 3) are
 available in the [`LTMRdata`](https://github.com/sbashevkin/LTMRdata)
