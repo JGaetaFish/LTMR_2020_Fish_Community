@@ -1,7 +1,7 @@
 # IEP long-term monitoring review - 2020 pilot effort
 
 <p align="center">
-  <img src='IEP_Logo.png' height="300" />
+  <img src='IEP_logo_compliant_colors.jpg' height="300" />
 </p>
 
 ## Code and analyses for identifying sub-community assemblages and representative species collected by IEP long-term monitoring surveys using midwater and otter trawl gears
