@@ -1,16 +1,16 @@
+# IEP long-term monitoring review 2020 pilot effort
+
 <p align="center">
   <img src='IEP_Logo.png' height="300" />
 </p>
 
-
-# IEP long-term monitoring review 2020 pilot effort
 ## Code and analyses for identifying sub-community assemblages and representative species collected by IEP long-term monitoring surveys using midwater and otter trawl gears
 
 NOTE: Data integration code and data (described in chapter 3) are
 available in the [`LTMRdata`](https://github.com/sbashevkin/LTMRdata)
 package. Additional IEP long-term monitoring review 2020 code can be [found here](https://github.com/sbashevkin/LTMRpilot).
 
-# Code
+### Code
 
 - *Splittail assessment functions.R*: Helper functions for Splittail case study
 - *Splittail data processing.R*: Process data for model-fitting, and create the sampling effort reduction scenarios
@@ -19,7 +19,7 @@ package. Additional IEP long-term monitoring review 2020 code can be [found here
 - *Splittail model processing.R*: Evaluate and process the full and reduced models. Create plots for the results of the Splittail case study
 - *Additional plots for technical chapter.R*: Create simulation plots for conceptual diagram and Splittail distribution plot for the technical chapter
 
-# Data
+### Data
 
 All files can be loaded with the `load` function. 
 
@@ -27,7 +27,7 @@ All files can be loaded with the `load` function.
 - *Full model local trends.Rds*: Processed full model output with 95% credible intervals
 - *Reduced model proportions.Rds*: Processed reduced models, specifying the proportion of posterior draws falling within the 95% credible intervals of the full model
 
-# Figures
+### Figures
 
 - *Distribution plots*: A folder of plots of model predictions from the full and each reduced model.
 - *Full_sim.png*: Simulated full model for the conceptual diagram
