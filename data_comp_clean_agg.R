@@ -1,19 +1,23 @@
 ############################################################################
 #~~     Incorporation of Sam Bashevkin's LTMRdata data compilation package
 #~~     to convert dataset into cluster analysis format.
-#~~     Data are aggregated into 2 data types: 
-#~~         1) open water year-round surveys (Bay Study MWT and UCD OTR)
-#~~         2) open water Fall-only surveys (Bay Study MWT, FMWT, and UCD OTR)
+#~~     Data are aggregated into 3 "data groups": 
+#~~         1) open water, year-round surveys (Bay Study MWT and UCD OTR)
+#~~         2) open water, fall-only surveys (Bay Study MWT, FMWT, and UCD OTR)
+#~~         3) demersal, year-round surveys (Bay Study OTR and UCD OTR)
 #~~
 #~~     Script initially created by JW Gaeta on Apr 9, 2020
-#~~     Script last modified by JW Gaeta on October 27, 2020
+#~~     Script last modified by JW Gaeta on October 28, 2020
 ############################################################################
 
 # rm(list=ls())
 # graphics.off()
 # cat("\f")
-# threshold = 38
 
+############################################################################
+#~~     STEP 1: Upload data and subset data based on minimum years surveyed,
+#~~             minimum annual detection, and minimum length thresholds
+############################################################################
 
 library(tidyr)
 # install.packages("devtools")
@@ -22,24 +26,19 @@ library(tidyr)
 require(LTMRdata)
 data("Species")
 print(Species, n=dim(Species)[1])
-############################################################################
-#~~     Data upload and reduction to sites those at or above threshold
-############################################################################
 
-#calc_tow_volume=TRUE
 if(fall_only == TRUE){
   threshold = 33 # minimum number of years a station is surveyed to be included
 } else {
   threshold = 38 # minimum number of years a station is surveyed to be included
 }
 
-catch_cutoff_threshold = 1 # observation minimum per month
-min_length_threshold_40=TRUE
+catch_cutoff_threshold = 1 #   observation minimum per month
+min_length_threshold_40=TRUE # applying minimum length threshold of 40mm
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    UC Davis Suisun Marsh Data
 data(Suisun)
-#str(Suisun)
 Suisun$yr=format(x = Suisun$Date, format="%Y")
 ucd_sta = unique(Suisun$Station)
 
@@ -55,7 +54,6 @@ for(i in 1:length(ucd_sta)){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    CDFW Bay Study Data
 data(Baystudy)
-#str(Baystudy)
 Baystudy$yr=format(x = Baystudy$Date, format="%Y")
 bs_sta = unique(Baystudy$Station)
 Baystudy$station_int = as.integer(Baystudy$Station)
@@ -80,9 +78,6 @@ na0s_Baystudy_wide_mat = Baystudy_wide_mat
 na0s_Baystudy_wide_mat[is.na(na0s_Baystudy_wide_mat)]=0
 
 
-
-#bs_sta_above_thresh = names(which(colSums(na0s_Baystudy_wide_mat)>=threshold))
-
 bs_sta_above_thresh = c()
 for(i in 1:length(bs_sta)){
   sub = subset(Baystudy, Baystudy$Station==bs_sta[i])
@@ -93,19 +88,13 @@ for(i in 1:length(bs_sta)){
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~    CDFW Bay Study Data
+#~    CDFW Fall Midwater Trawl Study Data
 data(FMWT)
-#str(FMWT)
 FMWT$yr=as.integer(format(x = FMWT$Date, format="%Y"))
 FMWT = subset(FMWT, FMWT$yr>1979 & FMWT$yr<2018)
 FMWT$Survey = as.integer(format(FMWT$Date, format="%m"))
 FMWT = subset(FMWT, FMWT$Survey %in% c(9,10,11))
 
-# FMWT_na = FMWT[is.na(FMWT$Tow_volume),]
-# FMWT_na$Survey = as.integer(format(FMWT_na$Date, format="%m"))
-# FMWT_na = subset(FMWT_na, FMWT_na$Survey %in% c(9,10,11))
-# table(FMWT_na$Survey)
-# table(FMWT_na$Station)
 FMWT$station_int = as.integer(FMWT$Station)
 FMWT = FMWT[order(FMWT$yr, FMWT$station_int),]
 unique(FMWT$station_int)
@@ -116,23 +105,27 @@ FMWT_wide=FMWT %>%
               id_cols = c(station_int))
 FMWT_wide=data.frame(FMWT_wide)
 FMWT_wide=FMWT_wide[order(FMWT_wide$station_int),]
-head(FMWT_wide)
+
 FMWT_wide_mat=as.matrix(FMWT_wide[,2:39])
 rownames(FMWT_wide_mat) = FMWT_wide[,1]
 FMWT_wide_mat = t(FMWT_wide_mat)
 FMWT_wide_mat[!is.na(FMWT_wide_mat)]=1
 
-#FMWT_wide_mat[,125:130]
-
+# Find "no_fish_caught" and add zeros to dataset
 na0s_FMWT_wide_mat = FMWT_wide_mat
 na0s_FMWT_wide_mat[is.na(na0s_FMWT_wide_mat)]=0
 
 fmwt_sta_above_thresh = names(which(colSums(na0s_FMWT_wide_mat)>=threshold))
 
 
-
 ############################################################################
-#~~     Generate Aggregated Datasets
+#~~     STEP 2: Aggregate study-specific datasets based on data groups, 
+#~~             restrucutre for Principal Tensor Analysis, and eliminate 
+#~~             non-fish species and unidentified fishes.
+#~~       Data groups are as follows:
+#~~         1) open water, year-round surveys (Bay Study MWT and UCD OTR)
+#~~         2) open water, fall-only surveys (Bay Study MWT, FMWT, and UCD OTR)
+#~~         3) demersal, year-round surveys (Bay Study OTR and UCD OTR)
 ############################################################################
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,21 +145,22 @@ dat = merge(dat, Species[,c(2,7)])
 
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#~~ test of removing all individuals <40mm NOT taking into account length conversion
+#~~ Note: length conversions were only available for a subset of species.
+#~~     Refer to the LTMR report for additional details
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if(min_length_threshold_40==TRUE){
   dat = dat[which(dat$Length>=40),]
 }
 
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Add survey number to non-numbered surveys (UCD)
+#Add survey number to non-numbered surveys (i.e., UCD)
 dat$Survey=as.integer(format(dat$Date, "%m"))
 
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~   calculate CPUE (NOTE: 1.5m conversion into tow volume)
-#UCD otter net  = 4.5mx1.5m mouth *70% opening * tow time/60 minutes *4000m/hr 
+#~~   calculate CPUE (NOTE: for UCD Otter Trawl conversion from area into volume: 
+#~~                   multiply by 1.5m)
+
 
 if(calc_tow_volume==TRUE){
   dat$cpue = c(dat$Count/(dat$Tow_area*1.5))
@@ -178,9 +172,7 @@ dat$cpue[which(dat$Method=="Midwater trawl")] =
   dat$Count[which(dat$Method=="Midwater trawl")]/dat$Tow_volume[which(dat$Method=="Midwater trawl")]
 
 
-
 fmwt_index = which(dat$Station %in% fmwt_sta_above_thresh & dat$Source=="FMWT")
-#sort(unique(dat$Station[fmwt_index]))
 bs_index = which(dat$Station %in% bs_sta_above_thresh & dat$Source=="Bay Study")
 ucd_index = which(dat$Station %in% ucd_sta_above_thresh & dat$Source=="Suisun")
 
@@ -323,74 +315,6 @@ demersal_cut_index=which(colSums(count_demersal[,-c(1:7)])<c(catch_cutoff_thresh
 demersal = demersal[,-c(demersal_cut_index+7)]
 sort(colSums(demersal[,-c(1:7)]), decreasing=TRUE)
 
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#plot
-
-setwd("/Users/jeremewgaeta/Files/DFW/Review_2019_2020/Cluster/integrated_data_analyses/")
-
-# pdf(file = "Taxa_thresholds.pdf", width=6, height=10, paper = "special")
-# quartz(width=6, height=10)
-par(mfrow=c(3,1), mar=c(4,4,6,4)+0.1)
-plot(taxa_count ~ c(0:12), type='n', las=1,
-     ylab="", xlab="")
-abline(v=seq(0,25,by=1), col="gray80")
-abline(h=seq(0,110,by=10), col="gray80")
-lines(taxa_count ~ c(0:12), lwd=2.5)
-axis(side = 3, at = seq(from=0, to=12, by=1), labels=paste(0:12, "/", "12", sep=""))
-axis(side = 4, at = taxa_count[1]*c(1,0.9,0.8,0.7,0.6, 0.5,0.4,0.3,0.2),
-     labels=c(1,0.9,0.8,0.7,0.6, 0.5,0.4,0.3,0.2)*100, las=1)
-mtext(text = "Minimum Detection Count (average per survey)",
-      side = 3, line=2.25, cex=0.75)
-mtext(text = "Minimum Detection Count (average per year)",
-      side = 1, line=2.25, cex=0.75)
-mtext(text = "Percent of Total Species",
-      side = 4, line=2.25, cex=0.75)
-mtext(text = "Species cpue",
-      side = 2, line=2.25, cex=0.75)
-mtext(text = "Year-round open water surveys (BS MWT; UCD OTR)",
-      side = 3, line=3.75, font=2, cex=1)
-
-plot(taxa_demersal_count ~ c(0:12), type='n', las=1,
-     ylab="", xlab="")
-abline(v=seq(0,25,by=1), col="gray80")
-abline(h=seq(0,130,by=10), col="gray80")
-lines(taxa_demersal_count ~ c(0:12), lwd=2.5)
-axis(side = 3, at = seq(from=0, to=12, by=1), labels=paste(0:12, "/", "12", sep=""))
-axis(side = 4, at = taxa_demersal_count[1]*c(1,0.9,0.8,0.7,0.6, 0.5,0.4,0.3,0.2),
-     labels=c(1,0.9,0.8,0.7,0.6, 0.5,0.4,0.3,0.2)*100, las=1)
-mtext(text = "Minimum Detection Count (average per survey)",
-      side = 3, line=2.25, cex=0.75)
-mtext(text = "Minimum Detection Count (average per year)",
-      side = 1, line=2.25, cex=0.75)
-mtext(text = "Percent of Total Species",
-      side = 4, line=2.25, cex=0.75)
-mtext(text = "Species cpue",
-      side = 2, line=2.25, cex=0.75)
-mtext(text = "Year-round demersal surveys (BS OTR; UCD OTR)",
-      side = 3, line=3.75, font=2, cex=1)
-
-plot(taxa_fall_count ~ c(0:12), type='n', las=1,
-     ylab="", xlab="")
-abline(v=seq(0,25,by=1), col="gray80")
-abline(h=seq(0,130,by=10), col="gray80")
-lines(taxa_fall_count ~ c(0:12), lwd=2.5)
-axis(side = 3, at = seq(from=0, to=12, by=1), labels=paste(0:12, "/", "4", sep=""))
-axis(side = 4, at = taxa_fall_count[1]*c(1,0.9,0.8,0.7,0.6, 0.5,0.4,0.3,0.2),
-     labels=c(1,0.9,0.8,0.7,0.6, 0.5,0.4,0.3,0.2)*100, las=1)
-mtext(text = "Minimum Detection Count (average per survey)",
-      side = 3, line=2.25, cex=0.75)
-mtext(text = "Minimum Detection Count (average per year)",
-      side = 1, line=2.25, cex=0.75)
-mtext(text = "Percent of Total Species",
-      side = 4, line=2.25, cex=0.75)
-mtext(text = "Species cpue",
-      side = 2, line=2.25, cex=0.75)
-mtext(text = "Fall-only open water surveys (BS MWT; FMWT; UCD OTR)",
-      side = 3, line=3.75, font=2, cex=1)
-# dev.off()
 
 
 

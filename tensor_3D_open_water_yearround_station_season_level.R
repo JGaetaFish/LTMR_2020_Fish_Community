@@ -35,7 +35,7 @@ source_github <- function(u) {
   eval(parse(text = script))
 }  
 
-source_github("https://github.com/JGaetaFish/LTMR_2020_Fish_Community/blob/main/data_comp_clean_agg.R")
+source_github("https://raw.githubusercontent.com/JGaetaFish/LTMR_2020_Fish_Community/main/data_comp_clean_agg.R")
 
 
 table(all_sea$yr)
