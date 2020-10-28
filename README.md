@@ -1,4 +1,4 @@
-# IEP long-term monitoring review 2020 pilot effort
+# IEP long-term monitoring review - 2020 pilot effort
 
 <p align="center">
   <img src='IEP_Logo.png' height="300" />
