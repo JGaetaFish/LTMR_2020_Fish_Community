@@ -21,4 +21,6 @@ package. Additional IEP long-term monitoring review 2020 code can be [found here
 - *tensor_3D_open_water_yearround_station_season_level.R*: Open-water, year-round data grouping principal tensor and cluster analyses
 
 
-
+<p align="center">
+  <img src='PTA_rect_dendo.jpg' height="600" />
+</p>
