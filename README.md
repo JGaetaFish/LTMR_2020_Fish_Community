@@ -13,7 +13,7 @@ package. Additional IEP long-term monitoring review 2020 code can be [found here
 ### Code
 
 - *data_comp_clean_agg.R*: Data compilation, filtering, and processing file
-- *Splittail data processing.R*: Process data for model-fitting, and create the sampling effort reduction scenarios
+- *tensor_3D_open_water_yearround_station_season_level.R*: Open-water, year-round data grouping principal tensor and cluster analyses
 
 
 
