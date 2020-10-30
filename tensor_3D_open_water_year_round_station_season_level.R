@@ -182,7 +182,7 @@ pta<-PTA3(red_sea_arr, nbPT = 3, nbPT2 = 3, minpct = 0.1)
 summary.PTAk(pta,testvar = 0)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~ Perform Scree plot evaluation to identify dominant pricipal tensors
+#~ Use Scree plot  to identify dominant pricipal tensors
 out <- !substr(pta[[3]]$vsnam, 1, 1) == "*"
 gct<-(pta[[3]]$pct*pta[[3]]$ssX/pta[[3]]$ssX[1])[out]
 par(mfrow=c(1,1), mar=c(4.5,4.5,1.5,1.5)+0.1)
@@ -190,12 +190,11 @@ barplot(sort(gct, decreasing = TRUE), xlab="PT",
         ylab="Percentage of variance", las=1); box(which="plot")
 keep = c(1,3,11)
 
-
 sea_summary = aggregate(season_year ~ season_number + season_count + season_year, FUN=unique, data=sea)
 sea_summary$yr=substr(as.character(sea_summary$season_year), start=3, stop=4)
 sea_summary = subset(sea_summary, sea_summary$season_count %in% as.numeric(pta[[1]]$n))
 
-#Create the matrix with the projection of species on the 4 PT
+#Create the matrix with the projection of species on the PTs
 coo<-t(pta[[2]]$v[c(keep),])
 
 rownames(coo) = pta[[2]]$n
@@ -282,7 +281,6 @@ k.best.silhouette = which.max(asw)
 #~   Alternative approach to find fewer clusters based on local maxima 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 #find local maxima with 'm' points on either side
 find_peaks <- function (x, m = 3){
   shape <- diff(sign(diff(x, na.pad = FALSE)))
@@ -298,7 +296,6 @@ find_peaks <- function (x, m = 3){
 }
 
 asw_maxima=find_peaks(asw)
-
 
 # pdf(file = "K_n_demersal_all_season_cluster_eval.pdf", width = 11, height=5, paper = "special")
 par(mfrow=c(1,1), mar=c(4.5,4.5,1.5,1.5)+0.1)
@@ -324,7 +321,6 @@ axis(1, asw_maxima[1]-1.5, "(alternative k)", col="darkgreen",
      font=2, col.axis="darkgreen", line = 0.75, tick = FALSE)
 # dev.off()
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #   Silhouette plot 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -340,9 +336,6 @@ row.names(silo)=silo_names$code
 
 par(mfrow=c(1,1), mar=c(6,8,1.5,1.5)+0.1)
 plot(silo, max.strlen = 25, cex.names = 0.6, main="")
-
-red_dend_ave <- as.dendrogram(hclust.avg, hang=-1)
-red_dend_ave <- rotate(red_dend_ave, 1:length(hclust.avg$labels))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #   Dendrogram plot 
