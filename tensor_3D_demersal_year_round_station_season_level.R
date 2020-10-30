@@ -330,37 +330,14 @@ silo = sortSilhouette(sil)
 silo_names = data.frame(code=row.names(coo)[attr(silo, "iOrd")])
 row.names(silo)=silo_names$code
 
-par(mfrow=c(1,1), mar=c(5, 15, 2, 2)+0.1, oma=c(0,0,0,0))
-plot(silo)
 par(mfrow=c(1,1), mar=c(6,8,1.5,1.5)+0.1, oma=c(0,0,0,0))
-plot(silo, max.strlen = 25, cex.names = 0.25, main="")
+plot(silo, max.strlen = 25, cex.names = 0.5, main="", nmax.lab = 50)
 
-#############################################################################
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#   Plot final dendrogram
+#   Dendrogram plot 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#############################################################################
-
 taxa_dendro = as.dendrogram(hclust.avg)
-taxaclusters <- cutree(taxa_dendro, k=optim_k)[order.dendrogram(taxa_dendro)]
-taxacol_id = c(hcl.colors(n=9, palette = "Viridis")[c(1,3,7)],
-               hcl.colors(n=9, palette = "Heat")[c(5)],
-               hcl.colors(n=10, palette = "RdBu")[c(10,2)],
-               hcl.colors(n=7, palette = "Dark 2")[c(3,5)],
-               hcl.colors(n=10, palette = "BrBG")[c(2,10)],
-               hcl.colors(n=10, palette = "PiYG")[c(2,10)])
-
-
-taxa_dendro = taxa_dendro %>%
-  branches_attr_by_clusters(taxaclusters, values = taxacol_id) %>%
-  set("branches_lwd", 2) %>%
-  set("labels_cex", 0.8)
-
 nclust = optim_k
-par(mar=c(1,3,1,1))
-par(mfrow=c(1,1), mar=c(10,1.5,1.5,1.5)+0.1)
-plot(taxa_dendro, xaxt='n', axes=FALSE)
-rect.hclust(hclust.avg, k=nclust, border=gray(0.2,0.2))
 
 clust_3D <- as.factor(cutree(taxa_dendro, k=nclust))
 dendro_df = data.frame(taxa = unlist(partition_leaves(taxa_dendro)[1]),
@@ -369,31 +346,22 @@ taxa_cluster_df=data.frame( taxa = row.names(coo), cluster = clust_3D)
 taxa_cluster_df=merge(taxa_cluster_df ,dendro_df)
 taxa_cluster_df=taxa_cluster_df[order(taxa_cluster_df$dendr_order),]
 clust_col_order=taxa_cluster_df$cluster[!duplicated(taxa_cluster_df$cluster)]
-
-taxa_cluster_df = taxa_cluster_df[order(taxa_cluster_df$cluster),]
 taxa_dendro_black=as.dendrogram(hclust.avg)
 taxa_dendro_black = taxa_dendro_black %>%
   set("branches_lwd", 1.5) %>%
   set("labels_cex", 0.9) 
 
-# pdf(file = "Demersal_PTA_rect_dendo.pdf", width = 12, height=7, paper = "special")
-# windows(width = 7, height=9)
-# quartz(width = 12, height=7)
-par(mar=c(1,3,1,1))
 par(mfrow=c(1,1), mar=c(12,1.5,1.5,1.5)+0.1)
 plot(taxa_dendro_black, xaxt='n', axes=FALSE, lwd=5)
 rect.dendrogram(taxa_dendro_black, k=nclust,
                 border=hcl.colors(n=nclust+1,
                                   palette = "Viridis")[clust_col_order],
                 lwd=2)
-# dev.off()
 
-#############################################################################
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#   Plot PTA Biplot
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#############################################################################
-taxa_cluster_df
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~   Biplot
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 taxa_cluster_names = c("Sturgeon+", 
                        "Silverside+",
                        "Wht. Catfish",
@@ -406,9 +374,6 @@ taxa_cluster_names = c("Sturgeon+",
                        "Shokihaze",#10
                        "Shimofuri")
 
-# pdf(file = "PTA_demersals_ordination.pdf", width = 12, height=4.5, paper = "special")
-# windows(width = 7, height=9)
-# quartz(width = 12, height=4.5)
 par(mfrow=c(1,3), mar=c(4,4,1.5,1.5)+0.1)
 s.class(coo, fac = clust_3D, xax=1, yax=2,
         col=hcl.colors(n=nclust+1, palette = "Viridis"),
@@ -432,8 +397,6 @@ text(((par('usr')[2]-par('usr')[1])*0.05)+par('usr')[1], 0,
      labkeep[4], srt=90, xpd=NA, cex=1)
 text(0,((par('usr')[4]-par('usr')[3])*0.05)+par('usr')[3],
      labkeep[1], xpd=NA, cex=1)
-# dev.off()
-
 
 #~~~~~~~~~~~~~~~~~~~~
 par(mfrow=c(1,2), mar=c(4,4,2,2)+0.1, oma=c(0,0,0,0))
@@ -448,22 +411,10 @@ text(0,((par('usr')[4]-par('usr')[3])*0.05)+par('usr')[3],
 
 s.label(coo, xax=1, yax=3,clabel = 0.5)
 
-#~~~~~~~~~~~~~~~~~~~~
-par(mfrow=c(1,2), mar=c(4,4,2,2)+0.1, oma=c(0,0,0,0))
-s.class(coo, fac = clust_3D, xax=1, yax=2,
-        col=hcl.colors(n=nclust+1, palette = "Viridis"),
-        clabel = 1, label=taxa_cluster_names,
-        addaxes = TRUE, cgrid = 0)
-text(((par('usr')[2]-par('usr')[1])*0.05)+par('usr')[1], 0,
-     labkeep[3], srt=90, xpd=NA, cex=1)
-text(0,((par('usr')[4]-par('usr')[3])*0.05)+par('usr')[3],
-     labkeep[1], xpd=NA, cex=1)
-
-s.label(coo, xax=1, yax=2,clabel = 0.5)
-
-#####################################################
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~ Visualize Principal tensors
-#####################################################
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+col_season = c("darkblue", "darkgreen", "darkred", "tan4")
 
 #~~~~~  PT1
 pta1_time=pta[[1]]$v[keep[1],]
@@ -476,7 +427,7 @@ for(i in 1:length(pta[[3]]$n)){
 }
 
 par(mfrow=c(1,1), mar=c(4,4,1,1))
-image(t(pta1_mat), col=hcl.colors(9, "BrBg", rev = FALSE), axes=F)
+image(t(pta1_mat), col=hcl.colors(50, "BrBg", rev = FALSE), axes=F)
 axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)),
      labels=pta[[1]]$n)
 axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)),
@@ -494,7 +445,7 @@ for(i in 1:length(pta[[3]]$n)){
 }
 
 par(mfrow=c(1,1), mar=c(4,4,1,1))
-image(t(pta2_mat), col=hcl.colors(9, "BrBg", rev = FALSE), axes=F)
+image(t(pta2_mat), col=hcl.colors(50, "BrBg", rev = FALSE), axes=F)
 axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
 axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)),
      labels=c(pta[[3]]$n), las=1, cex.axis=0.85)
@@ -511,7 +462,7 @@ for(i in 1:length(pta[[3]]$n)){
 }
 
 par(mfrow=c(1,1), mar=c(4,4,1,1))
-image(t(pta3_mat), col=hcl.colors(9, "BrBg", rev = FALSE), axes=F)
+image(t(pta3_mat), col=hcl.colors(50, "BrBg", rev = FALSE), axes=F)
 axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
 axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)),
      labels=c(pta[[3]]$n), las=1, cex.axis=0.85)
@@ -537,280 +488,9 @@ for(i in 1:length(pta[[3]]$n)){
 }
 
 par(mfrow=c(1,1), mar=c(4,4,1,1))
-image(t(pta4_mat), col=hcl.colors(9, "BrBg", rev = FALSE), axes=F)
+image(t(pta4_mat), col=hcl.colors(50, "BrBg", rev = FALSE), axes=F)
 axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
 axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)),
      labels=c(pta[[3]]$n), las=1, cex.axis=0.85)
 box(which="plot")
 #~~~~~~~~~~~~~~~~~~
-
-color.bar <- function(lut, min, max=-min, nticks=11,
-                      ticks=seq(min, max, len=nticks),
-                      title='') {
-  scale = (length(lut))/(max-min)
-  plot(c(min,max), c(0,1), type='n', bty='n',
-       xaxt='n', xlab='', yaxt='n', ylab='',
-       main=title)
-  for (i in 1:(length(lut))) {
-    x = (i-1)/scale + min
-    rect(0,x, 1, x+1/scale, col=lut[i], border=NA)
-  }
-}
-
-PT_axis = paste0("PT", 1:4, ": ", round((100 * (pta[[3]]$d[keep])^2)/pta[[3]]$ssX[1],1), "%")
-
-# pdf(file = "Demersal_PTA_allseason_heatgrids.pdf", width = 12, height=5, paper = "special")
-# windows(width = 7, height=9)
-# quartz(width = 12, height=5)
-par(mfrow=c(1,4), mar=c(4,4.5,2.5,0.75)+0.1, oma=c(0,0.5,0,7))
-image(t(pta1_mat), col=hcl.colors(150, "BrBg", rev = FALSE), axes=F)
-axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
-axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)), labels=c(pta[[3]]$n),
-     las=1, cex.axis=0.7)
-mtext(text = PT_axis[1], font=2, line = 0.5)
-mtext(text = "Time Step", side = 1, line = 2.25, cex=0.85)
-box(which="plot")
-
-image(t(pta2_mat), col=hcl.colors(150, "BrBg", rev = FALSE), axes=F)
-axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
-axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)), labels=c(pta[[3]]$n),
-     las=1, cex.axis=0.7)
-box(which="plot")
-mtext(text = PT_axis[2], font=2, line = 0.5)
-mtext(text = "Time Step", side = 1, line = 2.25, cex=0.85)
-box(which="plot")
-
-image(t(pta3_mat), col=hcl.colors(150, "BrBg", rev = FALSE), axes=F)
-axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
-axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)), labels=c(pta[[3]]$n),
-     las=1, cex.axis=0.7)
-box(which="plot")
-mtext(text = PT_axis[3], font=2, line = 0.5)
-mtext(text = "Time Step", side = 1, line = 2.25, cex=0.85)
-box(which="plot")
-
-image(t(pta4_mat), col=hcl.colors(150, "BrBg", rev = FALSE), axes=F)
-axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
-axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)), labels=c(pta[[3]]$n),
-     las=1, cex.axis=0.7)
-box(which="plot")
-mtext(text = PT_axis[4], font=2, line = 0.5)
-mtext(text = "Time Step", side = 1, line = 2.25, cex=0.85)
-box(which="plot")
-
-
-par(fig=c(0,1,0,1), mar=c(4.5,4.5,4.5,1.5)+0.1, oma=c(0,81,0,0), new=TRUE)
-color.bar(hcl.colors(150, "BrBg", rev = FALSE), min=0, max=1)
-mtext(text = bquote(atop(bold(Anomaly),bold(Gradient))),
-      side = 3,line = 0.25, adj=0.5, las=0)
-# dev.off()
-
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hex_col = c("#ABD9E9", "#D7191C", "#FDAE61", "#2C7BB6")
-
-# pdf(file = "Demersal_PT3_temporal.pdf", width = 12, height=6, paper = "special")
-# windows(width = 7, height=9)
-# quartz(width = 12, height=6)
-par(mfrow=c(1,2), mar=c(3.75,5,3.25,1.5)+0.1)
-image(t(pta3_mat), col=hcl.colors(150, "BrBg", rev = FALSE), axes=F)
-axis(side = 1, at=seq(0,1, length.out=length(pta[[1]]$n)), labels=pta[[1]]$n)
-axis(side = 2, at=seq(0,1, length.out=length(pta[[3]]$n)), labels=c(pta[[3]]$n),
-     las=1, cex.axis=0.6)
-box(which="plot")
-mtext(text = PT_axis[3], font=2, line = 0.4)
-mtext(text = "Time Step", side = 1, line = 2.25, cex=0.85)
-box(which="plot")
-
-plot(pta[[1]]$v[keep[3],] ~ as.numeric(pta[[1]]$n),
-     pch=19, cex=2, type='l', las=1, xaxt='n',
-     ylab="Relative Anomaly",
-     xlab="")
-axis(side = 1, at=as.numeric(pta[[1]]$n), las=1)
-axis(side = 3, at = seq(from=1, to=152, by=4), labels=1980:2017)
-abline(h=0, col=gray(0.5,0.3))
-points(pta[[1]]$v[keep[3],] ~ as.numeric(pta[[1]]$n), 
-       col=hex_col[demersal_summary[,1]], pch=19)
-legend("topleft", legend = c("Spring", "Summer", "Fall", "Winter"),
-       pch=19, col = hex_col, bty='n', inset=0.025)
-mtext(text = "Time Step", side = 1, line = 2.25, cex=0.85)
-mtext(text = "Year", side = 3, line = 2.25, cex=0.85)
-# dev.off()
-
-##################################################################
-#~~~~~~~~~~~~~~~~~~
-# Spatial cluster
-#~~~~~~~~~~~~~~~~~~
-##################################################################
-#Create the matrix with the projection of species on the 4 PT
-#Create the matrix with the projection of species on the 4 PT
-
-spat_coo<-t(pta[[3]]$v[c(keep),])
-rownames(spat_coo) = pta[[3]]$n
-spat_labkeep <- paste0(pta[[3]]$vsnam[keep], " - ", round((100 * (pta[[3]]$d[keep])^2)/pta[[3]]$ssX[1],1), "%")
-#1. Compute the distance between species
-dist_spatial=dist(spat_coo, method = "euclidean")
-#2. Build a tree with Ward linkage
-spatial_den=hclust(dist_spatial, method='average')
-#3. Plot the dendogram
-spatial_dendro = as.dendrogram(spatial_den)
-spatial_clusters <- cutree(spatial_dendro, k=10)[order.dendrogram(spatial_dendro)]
-spatial_col_id = c(hcl.colors(n=9, palette = "Viridis")[c(1,3,7)],
-                   hcl.colors(n=9, palette = "Heat")[c(5)],
-                   hcl.colors(n=10, palette = "RdBu")[c(10,2)],
-                   hcl.colors(n=7, palette = "Dark 2")[c(3,5)],
-                   hcl.colors(n=10, palette = "BrBG")[c(2,10)],
-                   hcl.colors(n=10, palette = "PiYG")[c(2,10)])
-
-
-spatial_dendro = spatial_dendro %>%
-  branches_attr_by_clusters(spatial_clusters, values = spatial_col_id) %>%
-  set("branches_lwd", 2) %>%
-  set("labels_cex", 0.8)
-par(mfrow=c(1,1), mar=c(5,1.5,1.5,1.5)+0.1)
-plot(spatial_dendro, xaxt='n', axes=FALSE)
-rect.hclust(spatial_den, k=7, border=gray(0.2,0.2))
-
-####### Identify optimal clusters
-spat_asw = numeric(nrow(spat_coo))
-
-# write values
-for(k in 2:(nrow(spat_coo)-1)) {
-  sil = silhouette(cutree(spatial_den, k=k), dist_spatial)
-  spat_asw[k] = summary(sil)$avg.width
-}
-
-#best (larggest Silhouette width)
-spat_k.best.silhouette = which.max(spat_asw)
-
-spat_kt = data.frame(k=1:nrow(spat_coo), r=0) 
-
-for(i in 2:nrow((spat_coo)-1)) {
-  gr = cutree(spatial_den, i)
-  distgr = grpdist(gr)
-  mt = cor(dist_spatial, distgr, method = "pearson")
-  spat_kt[i,2] = mt
-}
-
-spat_kt = na.omit(spat_kt)
-spat_k.best.mantel = which.max(spat_kt$r)
-
-# pdf(file = "OpenWater_demersalson_spatial_mantel_eval.pdf", width = 11, height=5, paper = "special")
-par(mfrow=c(1,2), mar=c(4.5,4.5,1.5,1.5)+0.1)
-plot(1:nrow(spat_coo), spat_asw, 
-     main="Silhouette - Complete", xlab="Number of Clusters",
-     ylab="Average Silhouette Width", type='h', lend=1,
-     las=1, lwd=2, ylim=c(0, max(spat_asw)*1.05), yaxs='i')
-lines(y = c(0,max(spat_asw)), x=c(spat_k.best.silhouette, spat_k.best.silhouette),
-      col="red3", lwd=4, lend=1)
-axis(1, spat_k.best.silhouette,  col.axis="red3", col.ticks = "red3", font=2)
-axis(1, spat_k.best.silhouette, "(optimum k)", col="red3",
-     font=2, col.axis="red3", line = 0.75, tick = FALSE)
-
-plot(spat_kt$k, spat_kt$r, 
-     main="Mantel - Complete", xlab="Number of Clusters",
-     ylab=bquote("Pearson's"~italic(rho)), type='h', lend=1,
-     las=1, lwd=2, ylim=c(0, max(spat_kt$r)*1.05), yaxs='i')
-lines(y = c(0,max(spat_kt$r)), x=c(spat_k.best.mantel, spat_k.best.mantel),
-      col="red3", lwd=4, lend=1)
-axis(1, spat_k.best.mantel,  col.axis="red3", col.ticks = "red3", font=2)
-axis(1, spat_k.best.mantel, "(optimum k)", col="red3",
-     font=2, col.axis="red3", line = 0.75, tick = FALSE)
-# dev.off()
-
-
-
-spat_nclust = 9
-
-spat_cutg = cutree(spatial_dendro, k = spat_nclust)
-spat_sil = silhouette(spat_cutg, dist_spatial)
-spat_silo = sortSilhouette(spat_sil)
-silo_names = data.frame(code=row.names(spat_coo)[attr(spat_silo, "iOrd")])
-row.names(spat_silo)=silo_names$code
-
-
-# pdf(file = "PTA_spatial_sil_demersal_year_round.pdf", width = 6, height=7, paper = "special")
-#quartz(width = 6, height=7)
-par(mar=c(5.5, 5, 3,2))
-plot(spat_silo, border=1, 
-     main="Demersal, year-round",
-     cex.names=0.5, nmax.lab = 100, max.strlen = 10)
-# dev.off()
-
-spat_clust_3D <- as.factor(cutree(spatial_dendro, k=spat_nclust))
-dendro_spat_df = data.frame(site = unlist(partition_leaves(spatial_dendro)[1]),
-                            dendr_order=1:(length(unlist(partition_leaves(spatial_dendro)[1]))))
-spat_cluster_df=data.frame( site = row.names(spat_coo), cluster = spat_clust_3D)
-spat_cluster_df=merge(spat_cluster_df ,dendro_spat_df)
-spat_cluster_df=spat_cluster_df[order(spat_cluster_df$dendr_order),]
-clust_col_order=spat_cluster_df$cluster[!duplicated(spat_cluster_df$cluster)]
-
-spat_cluster_df = spat_cluster_df[order(spat_cluster_df$cluster),]
-spat_dendro_black=as.dendrogram(spatial_den)
-spat_dendro_black = spat_dendro_black %>%
-  set("branches_lwd", 1.5) %>%
-  set("labels_cex", 0.85) 
-
-
-height_df=data.frame(object=as.character(get_nodes_attr(spat_dendro_black, "label")),
-                     height = get_nodes_attr(spat_dendro_black, "height"))
-par(mar=c(10,6,0,0))
-plot(spat_dendro_black)
-
-object=c()
-height=c()
-for(i in 2:dim(height_df)[1]){
-  if(i==2){
-    if(height_df$height[i]==0 & height_df$height[i-1]>0){
-      object=c(object, as.character(height_df$object[i]))
-      height=c(height, height_df$height[i-1])
-    }
-  }
-  if(i>2){
-    if(height_df$height[i]==0 & height_df$height[i-1]==0){
-      object=c(object, as.character(height_df$object[i]))
-      height=c(height, height_df$height[i-2])
-    }
-    if(height_df$height[i]==0 & height_df$height[i-1]>0){
-      object=c(object, as.character(height_df$object[i]))
-      height=c(height, height_df$height[i-1])
-    }
-  }
-}
-
-
-nearest_node_height = data.frame(station=object, nearest_node_height=height)
-
-write.csv(x = nearest_node_height, file = "dyr_nearest_node_height.csv")
-
-
-
-# pdf(file = "Demersal_PTA_rect_spatial_dendo.pdf", width = 12, height=7, paper = "special")
-# windows(width = 7, height=9)
-# quartz(width = 10, height=7)
-par(mar=c(1,3,1,1))
-par(mfrow=c(1,1), mar=c(5,1.5,1.5,1.5)+0.1, oma=c(0,0,0,0))
-plot(spat_dendro_black, xaxt='n', axes=FALSE, lwd=5, cex.lab=0.5)
-rect.dendrogram(spat_dendro_black, k=spat_nclust,
-                border=hcl.colors(n=spat_nclust+1,
-                                  palette = "Viridis")[clust_col_order],
-                lwd=1.5)
-# dev.off()
-
-par(mar=c(4.5,4.5,1,1)+0.1, 
-    fig = c(0.5,1, 0.55, 1), new = T)  
-plot(spat_kt$k, spat_kt$r, 
-     main="Mantel - Complete", xlab="Number of Clusters",
-     ylab=bquote("Pearson's"~italic(rho)), type='h', lend=1,
-     las=1, lwd=2, ylim=c(0, max(spat_kt$r)*1.05), yaxs='i')
-lines(y = c(0,max(spat_kt$r)), x=c(spat_k.best.mantel, spat_k.best.mantel),
-      col="red3", lwd=4, lend=1)
-axis(1, spat_k.best.mantel,  col.axis="red3", col.ticks = "red3", font=2)
-axis(1, spat_k.best.mantel, "(optimum k)", col="red3",
-     font=2, col.axis="red3", line = 0.75, tick = FALSE)
-# dev.off()
-
-
-
