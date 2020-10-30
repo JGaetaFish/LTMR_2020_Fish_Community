@@ -3,7 +3,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    Cluster analysis of open water, year-round data
 #~    Script created on March 19, 2020 by JW Gaeta
-#~    Script last modified on October 28, 2020 by JW Gaeta
+#~    Script last modified on October 29, 2020 by JW Gaeta
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #############################################################################
 
@@ -14,7 +14,6 @@
 
 library(vegan)
 library(dendextend)
-library(circlize)
 library(ade4)
 library(PTAk)
 library(cluster)
@@ -46,7 +45,7 @@ all_sea = all_sea[order(all_sea$lme, all_sea$yr, all_sea$Survey),]
 ############################################################################
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Add December into the subsequent year's winter
+# Assign December into the subsequent year's winter
 season_year = all_sea$yr
 season_year[which(all_sea$Survey==12)]=
   as.character(as.numeric(all_sea$yr[which(all_sea$Survey==12)])+1)
