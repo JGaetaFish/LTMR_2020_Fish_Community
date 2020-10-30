@@ -22,7 +22,7 @@ package. Additional IEP long-term monitoring review 2020 code can be [found here
 - *data_comp_clean_agg.R*: Data compilation, filtering, and processing file
 - *tensor_3D_open_water_year_round_station_season_level.R*: Open-water, year-round data grouping principal tensor and cluster analyses
 - *tensor_3D_demersal_year_round_station_season_level.R*: Demersal, year-round data grouping principal tensor and cluster analyses
-- *tensor_3D_fall_openwater_station_annual_level.R*: Open-water, fall-only data grouping principal tensor and cluster analyses
+- *tensor_3D_open_water_fall_only_station_annual_level.R*: Open-water, fall-only data grouping principal tensor and cluster analyses
 
 
 <p align="center">
