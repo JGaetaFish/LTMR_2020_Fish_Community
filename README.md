@@ -28,3 +28,8 @@ package. Additional IEP long-term monitoring review 2020 code can be [found here
 <p align="center">
   <img src='PTA_rect_dendo.jpg' height="550" />
 </p>
+
+<p align="center">
+  <img src='PTA_all_season_ordination.jpg' height="350" />
+</p>
+
