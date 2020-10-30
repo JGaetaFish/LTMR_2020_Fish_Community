@@ -75,37 +75,12 @@ demersal=merge(season_count_df, demersal, all=TRUE)
 #~~     STEP 3: Aggregate data into season-station level
 ############################################################################
 
-names(demersal)
-
 demersal2=demersal %>%
   pivot_longer(cols = !season_yr:yr,
                names_to = "CommonName",
                values_to="cpue")
 
-head(demersal2)
-str(demersal2)
-
 demersal_no_0 = demersal2[which(demersal2$cpue>0),]
-
-study_obs_diff=demersal_no_0 %>%
-  pivot_wider(names_from = lme,
-              values_from = cpue,
-              values_fn = list(cpue = length),
-              id_cols = c(CommonName),
-              values_fill = list(cpue=0))
-study_obs_diff = data.frame(study_obs_diff)
-
-study_obs_diff$perc_bs = round((study_obs_diff[,2]/rowSums(study_obs_diff[,2:3]))*100, digits=1)
-study_obs_diff$perc_ucd = round((study_obs_diff[,3]/rowSums(study_obs_diff[,2:3]))*100, digits=1)
-study_obs_diff$CommonName = gsub("[.]", " ", study_obs_diff$CommonName)
-study_obs_diff$max_perc = apply(study_obs_diff[,4:5], MARGIN = 1, FUN = max)
-study_obs_diff = study_obs_diff[order(study_obs_diff$max_perc, decreasing = FALSE),]
-study_obs_diff
-
-
-
-# getwd()
-# write.csv(x = study_obs_diff, file = "spp_catch_per_study.csv")
 
 relative_sum = function(x){sum(x)/length(x)}
 
@@ -118,8 +93,6 @@ demersal3=demersal2 %>%
                           sta_lme, Station),
               values_fill = list(cpue=0))
 demersal3=as.data.frame(demersal3)
-# head(demersal3)
-dim(demersal3)
 
 ##################################################################################
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

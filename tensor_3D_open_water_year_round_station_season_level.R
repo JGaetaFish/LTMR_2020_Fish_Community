@@ -85,18 +85,6 @@ all_sea2=all_sea %>%
 
 all_sea_no_0 = all_sea2[which(all_sea2$cpue>0),]
 
-study_obs_diff=all_sea_no_0 %>%
-  pivot_wider(names_from = lme,
-              values_from = cpue,
-              values_fn = list(cpue = length),
-              id_cols = c(CommonName),
-              values_fill = list(cpue=0))
-study_obs_diff = data.frame(study_obs_diff)
-
-study_obs_diff$perc_bs = round((study_obs_diff[,2]/rowSums(study_obs_diff[,2:3]))*100, digits=1)
-study_obs_diff$perc_ucd = round((study_obs_diff[,3]/rowSums(study_obs_diff[,2:3]))*100, digits=1)
-study_obs_diff$CommonName = gsub("[.]", " ", study_obs_diff$CommonName)
-
 relative_sum = function(x){sum(x)/length(x)}
 
 sea=all_sea2 %>%
