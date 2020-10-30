@@ -33,11 +33,11 @@ fall = fall[which(fall$yr>1984 & fall$yr<2018),]
 fall = fall[order(fall$sta_lme, fall$yr),]
 
 ##################################################################################
-#~~   Convert surveys into fall3sons
+#~~   Convert surveys into seasons
 #~~ (too many missing survey-station combinations to run analysis at 
 #~~ survey-station resolution)
 
-#~~   sesons: Spring = March-May; summer = June-Aug; Fall = Sept-Nov; winter = Dec-Feb
+#~~   seasons: Spring = March-May; summer = June-Aug; Fall = Sept-Nov; winter = Dec-Feb
 ##################################################################################
 
 names(count_fall)
@@ -49,7 +49,7 @@ count_fall2=count_fall %>%
 aggregate(count ~ lme + CommonName, data=count_fall2, FUN=sum)
 aggregate(count ~ CommonName, data=count_fall2, FUN=sum)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~  Aggregate station-catch to fall3son-year-level
+#~  Aggregate station-catch to season-year-level
 
 names(fall)
 
