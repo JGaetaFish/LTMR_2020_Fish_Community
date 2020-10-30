@@ -26,5 +26,5 @@ package. Additional IEP long-term monitoring review 2020 code can be [found here
 
 
 <p align="center">
-  <img src='PTA_rect_dendo.jpg' height="600" />
+  <img src='PTA_rect_dendo.jpg' height="550" />
 </p>
