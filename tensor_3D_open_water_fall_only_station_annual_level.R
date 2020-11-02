@@ -27,45 +27,20 @@ library(devtools)
 calc_tow_volume=TRUE
 fall_only = TRUE
 
-source("/Users/jeremewgaeta/Files/DFW/Review_2019_2020/Cluster/integrated_data_analyses/data_comp_clean_agg.R")
+source_url("https://raw.githubusercontent.com/JGaetaFish/LTMR_2020_Fish_Community/main/data_comp_clean_agg.R")
 
 fall = fall[which(fall$yr>1984 & fall$yr<2018),]
 fall = fall[order(fall$sta_lme, fall$yr),]
 
-##################################################################################
-#~~   Convert surveys into seasons
-#~~ (too many missing survey-station combinations to run analysis at 
-#~~ survey-station resolution)
-
-#~~   seasons: Spring = March-May; summer = June-Aug; Fall = Sept-Nov; winter = Dec-Feb
-##################################################################################
-
-names(count_fall)
-
-count_fall2=count_fall %>%
-  pivot_longer(cols = !Method:yr,
-               names_to = "CommonName",
-               values_to="count")
-aggregate(count ~ lme + CommonName, data=count_fall2, FUN=sum)
-aggregate(count ~ CommonName, data=count_fall2, FUN=sum)
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~  Aggregate station-catch to season-year-level
-
-names(fall)
-
-table(fall[which(fall$yr==2004),"sta_lme"])
-fall[which(fall$lme=="fmwt"),]# & fall$yr==1980),]
-
+############################################################################
+#~~     STEP 2: Aggregate data into year-station level
+############################################################################
 
 fall2=fall %>%
   pivot_longer(cols = !Method:yr,
                names_to = "CommonName",
                values_to="cpue")
 
-head(fall2)
-str(fall2)
-
-names(fall2)
 relative_sum = function(x){sum(x)/length(x)}
 
 fall3=fall2 %>%
@@ -75,17 +50,14 @@ fall3=fall2 %>%
               id_cols = c(yr, lme, sta_lme),
               values_fill = list(cpue=0))
 fall3=as.data.frame(fall3)
-# head(fall3)
-dim(fall3)
 
-#red2
-##################################################################################
-#~~   Convert data into an array for PTA analysis
-##################################################################################
-data(FMWT)
+############################################################################
+#~~     STEP 3: Restructure data into an array framework for 
+#~~             Principal Tensor Analysis
+############################################################################
+
 FMWT$Survey = as.integer(format(FMWT$Date, format="%m"))
 FMWT$yr = as.integer(format(FMWT$Date, format="%Y"))
-#FMWT = FMWT[-which(as.character(FMWT$season_yr)=="2018_1"),]
 
 fallMWT = subset(FMWT, FMWT$Method=="Midwater trawl")
 fmwt_no_fish = fallMWT[which(fallMWT$Length_NA_flag=="No fish caught" & fallMWT$Station %in% fmwt_sta_above_thresh),]
@@ -119,7 +91,8 @@ BayStudyMWT = subset(Baystudy, Baystudy$Method=="Midwater trawl" & Baystudy$Surv
 bs_no_fish = BayStudyMWT[which(BayStudyMWT$Length_NA_flag=="No fish caught" & BayStudyMWT$Station %in% bs_sta_above_thresh),]
 bs_no_fish_agg=aggregate(station_int ~ Source  + yr + Station ,data=bs_no_fish, FUN = length)
 bs_no_fish_agg[which(bs_no_fish_agg$Station=="101"),]
-BayStudyMWT[which(BayStudyMWT$Station=="101" & BayStudyMWT$yr==1980),]
+data.frame(BayStudyMWT[which(BayStudyMWT$Station=="101" & BayStudyMWT$yr==1980),])
+data.frame(BayStudyMWT[which(BayStudyMWT$Station=="213" & BayStudyMWT$yr==2000),])
 
 bs_no_fish_agg = bs_no_fish_agg[which(bs_no_fish_agg$yr>1984 & bs_no_fish_agg$yr<2018),]
 bs_no_fish_agg$lme = rep("bs", times=dim(bs_no_fish_agg)[1])
@@ -139,34 +112,6 @@ for(i in 4:length(names(fall3))){
 fall3 = rbind(fall3,bs_no_fish_caught)
 
 fall3 = fall3[order(fall3$sta_lme, fall3$yr),]
-
-#~~~~~~~ UCD "no_fish_caught"
-Suisun$Survey = as.integer(format(Suisun$Date, format="%m"))
-UCD_otr = subset(Suisun, Suisun$Method=="Otter trawl" & Suisun$Survey %in% c(9,10,11))
-ucd_no_fish = UCD_otr[which(UCD_otr$Length_NA_flag=="No fish caught" & UCD_otr$Station %in% ucd_sta_above_thresh),]
-ucd_no_fish_agg=aggregate(Latitude ~ Source  + yr + Station ,data=ucd_no_fish, FUN = length)
-ucd_no_fish_agg[which(ucd_no_fish_agg$Station=="MZ1"),]
-data.frame(UCD_otr[which(UCD_otr$Station=="MZ1" & UCD_otr$yr==2007),])
-
-ucd_no_fish_agg = ucd_no_fish_agg[which(ucd_no_fish_agg$yr>1984 & ucd_no_fish_agg$yr<2018),]
-ucd_no_fish_agg$lme = rep("ucd", times=dim(ucd_no_fish_agg)[1])
-ucd_no_fish_agg$sta_lme = paste(ucd_no_fish_agg$lme, ucd_no_fish_agg$Station, sep="_")
-ucd_no_fish_agg$sta_lme_yr = paste(ucd_no_fish_agg$sta_lme, ucd_no_fish_agg$yr, sep="_")
-
-fall_fish_caught = paste(fall3$sta_lme, fall3$yr, sep="_")
-
-#NOTE: all years have data for UCD
-ucd_no_fish_agg = ucd_no_fish_agg[-which(ucd_no_fish_agg$sta_lme_yr %in% unique(fall_fish_caught)),]
-# ucd_no_fish_caught = data.frame(yr = ucd_no_fish_agg$yr, lme = ucd_no_fish_agg$lme,
-#                                sta_lme = ucd_no_fish_agg$sta_lme)
-# 
-# for(i in 4:length(names(fall3))){
-#   ucd_no_fish_caught = cbind(ucd_no_fish_caught,rep(0, times=dim(ucd_no_fish_caught)[1]))
-#   colnames(ucd_no_fish_caught)[i]=names(fall3)[i]
-# }
-# fall3 = rbind(fall3,ucd_no_fish_caught)
-# 
-# fall3 = fall3[order(fall3$sta_lme, fall3$yr),]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Standardize by z-scoring per taxa per study-gear
