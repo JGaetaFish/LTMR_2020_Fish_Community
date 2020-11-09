@@ -118,7 +118,6 @@ Baystudy$season_year=bs_season_year
 bs_season_yr = paste(Baystudy$season_year, Baystudy$season_number, sep="_")
 Baystudy = data.frame(data.frame(season_yr=bs_season_yr), Baystudy)
 
-
 # Identify survey events without fish detected
 BayStudyOTR = subset(Baystudy, Baystudy$Method=="Otter trawl")
 bs_no_fish = BayStudyOTR[which(BayStudyOTR$Length_NA_flag=="No fish caught" &
