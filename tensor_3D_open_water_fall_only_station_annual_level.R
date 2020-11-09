@@ -116,8 +116,6 @@ fall3 = fall3[order(fall3$sta_lme, fall3$yr),]
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Standardize by z-scoring per taxa per study-gear
 
-
-
 fall3 = fall3[order(fall3$sta_lme, fall3$yr),]
 
 sub2 = fall3[,-c(1:3)]
