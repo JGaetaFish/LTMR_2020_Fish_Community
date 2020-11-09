@@ -150,7 +150,7 @@ bs_add_zeros = bs_no_fish_merged[bs_zero_catch_index,]
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~     FLAG:
 #~~
-#~  BS 102 2017 Fall, BS 317 2017 Fall, and BS 428 1981 Winter have catch 
+#~  BS 102 2017 Summer, BS 317 2017 Summer, and BS 428 1981 Fall have catch 
 #~  data in the LTMRdata
 
 #check on error with 2017_3 bs_102; remove from "no fish caught dataset
