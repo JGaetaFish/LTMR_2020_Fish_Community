@@ -95,7 +95,7 @@ demersal3=as.data.frame(demersal3)
 #~~             i.e., instances of zero detection NOT skipped surveys
 ############################################################################
 
-# NOTE: added 29 season-stations with zero catch, which is 0.37% of bay Study season-stations
+# NOTE: added 27 season-stations with zero catch, which is 0.35% of season-stations
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~ Bay Study "no_fish_caught"
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,15 +151,29 @@ bs_add_zeros = bs_no_fish_merged[bs_zero_catch_index,]
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~     FLAG:
 #~~
-#~  BS 102 2017 Fall, BS 317 2017 Fall, and BS 428 1981 Winter haev catch 
+#~  BS 102 2017 Fall, BS 317 2017 Fall, and BS 428 1981 Winter have catch 
 #~  data in the LTMRdata
+
 #check on error with 2017_3 bs_102; remove from "no fish caught dataset
 demersal3[which(demersal3$season_yr=="2017_3" & demersal3$Station== 102),]
 bs_add_zeros[which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 102),]
 bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 102),]
 
+#check on error with 2017_3 bs_317; remove from "no fish caught dataset
+demersal3[which(demersal3$season_yr=="2017_3" & demersal3$Station== 317),]
+bs_add_zeros[which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 317),]
+bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 317),]
+
+#check on error with 1981_4 bs_428; remove from "no fish caught dataset
+demersal3[which(demersal3$season_yr=="1981_4" & demersal3$Station == 428),]
+bs_add_zeros[which(bs_add_zeros$season_yr=="1981_4" & bs_add_zeros$Station == 428),]
+bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="1981_4" & bs_add_zeros$Station == 428),]
+
+#~~     END FLAG:
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 # Add events without fish detected to the original "sea" dataset adding 0s for all fishes
-#~~  note 28 BS season-stations were 0 detections; representing 0.53% of total Bay Study season-stations
+#~~  note 26 BS season-stations were 0 detections; representing 0.50% of total Bay Study season-stations
 bs_no_fish_caught = data.frame(season_yr = bs_add_zeros$season_yr,
                                season_number = bs_add_zeros$season_number, 
                                season_year = bs_add_zeros$season_year,
@@ -307,8 +321,7 @@ for(i in 1:length(demersal_stations)){
     demersal_scaled_arr[row_order,x,i] = sub2[,x]
   }
 }
-duplicated(sub$season_yr)
-sub[150:153,]
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ identify survey count timeseries without all stations sampled
 
@@ -446,7 +459,7 @@ k.best.silhouette = which.max(asw)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #find local maxima with 'm' points on either side
-find_peaks <- function (x, m = 3){
+find_peaks <- function (x, m = 2){
   shape <- diff(sign(diff(x, na.pad = FALSE)))
   pks <- sapply(which(shape < 0), FUN = function(i){
     z <- i - m + 1
@@ -491,7 +504,7 @@ axis(1, asw_maxima[2]-1, "(alternative k)", col="darkgreen",
 red_dend_ave <- as.dendrogram(hclust.avg, hang=-1)
 red_dend_ave <- rotate(red_dend_ave, 1:length(hclust.avg$labels))
 
-optim_k = 11
+optim_k = 12
 cutg = cutree(hclust.avg, k = optim_k)
 sil = silhouette(cutg, dist1)
 silo = sortSilhouette(sil)
@@ -530,17 +543,18 @@ rect.dendrogram(taxa_dendro_black, k=nclust,
 #~~   Biplot
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-taxa_cluster_names = c("Sturgeon+", 
+taxa_cluster_names = c("Sturgeon; DS+", 
                        "Silverside+",
                        "Wht. Catfish",
-                       "Sanddab+",
-                       "Sole+", #5
-                       "Splittail+",
+                       "Gunnel+",
+                       "Tomcod+", #5
+                       "Sole+",
+                       "Splittail",
                        "C. Gobies",
-                       "PSS & Longfin",
                        "Halibut & Tonguefish",
-                       "Shokihaze",#10
-                       "Shimofuri")
+                       "Starry",
+                       "Longfin",
+                       "Sh. Gobies")
 
 par(mfrow=c(1,3), mar=c(4,4,1.5,1.5)+0.1)
 s.class(coo, fac = clust_3D, xax=1, yax=2,
