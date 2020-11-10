@@ -33,7 +33,11 @@ fall = fall[which(fall$yr>1984 & fall$yr<2018),]
 fall = fall[order(fall$sta_lme, fall$yr),]
 
 ############################################################################
-#~~     STEP 2: Aggregate data into year-station level
+#~~     STEP 2: Convert surveys into annual timestep:
+#~~                 Fall   = Sept-Nov
+#~~         NOTE: too many survey-stations combinations were missing to run 
+#~~               the analysis at the survey-station level
+#~~               (see the report for details)
 ############################################################################
 
 fall2=fall %>%
@@ -52,66 +56,194 @@ fall3=fall2 %>%
 fall3=as.data.frame(fall3)
 
 ############################################################################
-#~~     STEP 3: Restructure data into an array framework for 
-#~~             Principal Tensor Analysis
+#~~     STEP 3: Add zeros for seasons-stations flagged as "No fish caught"
+#~~             i.e., instances of zero detection NOT skipped surveys
 ############################################################################
 
+######
+#       NOTE: the following resulted in the addition of:
+#             164 FMWT station-years without fish detected
+#               5 BS station-years without fish detected
+#               0 UCD station-years without fish detected
+#       The addition of these zero-catch station-years increased the fall3
+#       dataset by 3.65 %
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~ Fall Midwater Trawl "no_fish_caught"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+data(FMWT)
 FMWT$Survey = as.integer(format(FMWT$Date, format="%m"))
 FMWT$yr = as.integer(format(FMWT$Date, format="%Y"))
+FMWT = FMWT[which(FMWT$yr>1984 & FMWT$yr<2018),]
 
-fallMWT = subset(FMWT, FMWT$Method=="Midwater trawl")
+fallMWT = subset(FMWT, FMWT$Method=="Midwater trawl" & FMWT$Survey %in% c(9,10,11))
 fmwt_no_fish = fallMWT[which(fallMWT$Length_NA_flag=="No fish caught" & fallMWT$Station %in% fmwt_sta_above_thresh),]
-fmwt_no_fish_agg=aggregate(Temp_surf ~ Source + yr + Station, 
-                         data=fmwt_no_fish, FUN = length)
 
-# Add stations-years with no catch of any fishes
-fmwt_no_fish_agg = fmwt_no_fish_agg[which(fmwt_no_fish_agg$yr>1984 & fmwt_no_fish_agg$yr<2018),]
-fmwt_no_fish_agg$lme = rep("fmwt", times=dim(fmwt_no_fish_agg)[1])
-fmwt_no_fish_agg$sta_lme = paste(fmwt_no_fish_agg$lme, fmwt_no_fish_agg$Station, sep="_")
-fmwt_no_fish_agg$sta_lme_yr = paste(fmwt_no_fish_agg$sta_lme, fmwt_no_fish_agg$yr, sep="_")
+#~~~~~~~~~~~
+# Aggregate annually; compare total surveys per year per station with
+#       total surveys per year per station without fish captured
+#~~~~~~~~~~~
 
-fall_fish_caught = paste(fall3$sta_lme, fall3$yr, sep="_")
+#~~ Aggregate to survey level
+fmwt_survey_station_no_fish = aggregate(SampleID ~ Source + yr + Survey + Station, 
+                                      data = fmwt_no_fish, FUN = unique)
+fmwt_survey_station = aggregate(SampleID ~ Source + yr + Survey + Station, 
+                              data = fallMWT, FUN = unique)
 
-fmwt_no_fish_agg = fmwt_no_fish_agg[-which(fmwt_no_fish_agg$sta_lme_yr %in% unique(fall_fish_caught)),]
+fmwt_survey_station_no_fish$event_count = lengths(fmwt_survey_station_no_fish$SampleID)
+fmwt_survey_station$event_count = lengths(fmwt_survey_station$SampleID)
 
-fall_no_fish_caught = data.frame(yr = fmwt_no_fish_agg$yr, lme = fmwt_no_fish_agg$lme,
-                                 sta_lme = fmwt_no_fish_agg$sta_lme)
+#~~ Aggregate to annual resolution
+fmwt_survey_year_station_no_fish = aggregate(event_count ~ Source + yr + Station, 
+                                           data = fmwt_survey_station_no_fish, FUN = sum)
+fmwt_survey_year_station = aggregate(event_count ~ Source + yr + Station, 
+                                        data = fmwt_survey_station, FUN = sum)
+
+colnames(fmwt_survey_year_station)[length(names(fmwt_survey_year_station))] = 
+  "total_surveys_per_season"
+colnames(fmwt_survey_year_station_no_fish)[length(names(fmwt_survey_year_station_no_fish))] = 
+  "surveys_without_fish"
+
+fmwt_no_fish_merged = merge(fmwt_survey_year_station, fmwt_survey_year_station_no_fish)
+fmwt_zero_catch_index = which(fmwt_no_fish_merged$surveys_without_fish ==
+                              fmwt_no_fish_merged$total_surveys_per_season)
+fmwt_add_zeros = fmwt_no_fish_merged[fmwt_zero_catch_index,]
+
+# Add events without fish detected to the original "sea" dataset adding 0s for all fishes
+dim(fmwt_add_zeros)[1]/dim(fmwt_survey_year_station)[1]*100
+#~~  note 164 station-years were 0 detections; representing 4.34% of total FMWT station-years
+fmwt_no_fish_caught = data.frame(yr = fmwt_add_zeros$yr,
+                               lme = rep("fmwt", dim(fmwt_add_zeros)[1]),
+                               sta_lme = paste(rep("fmwt", dim(fmwt_add_zeros)[1]),
+                                               fmwt_add_zeros$Station, sep="_"))
 
 for(i in 4:length(names(fall3))){
-  fall_no_fish_caught = cbind(fall_no_fish_caught,rep(0, times=dim(fall_no_fish_caught)[1]))
-  colnames(fall_no_fish_caught)[i]=names(fall3)[i]
+  fmwt_no_fish_caught = cbind(fmwt_no_fish_caught,rep(0, times=dim(fmwt_no_fish_caught)[1]))
+  colnames(fmwt_no_fish_caught)[i]=names(fall3)[i]
 }
-fall3 = rbind(fall3,fall_no_fish_caught)
-
+fall3 = rbind(fall3,fmwt_no_fish_caught)
 fall3 = fall3[order(fall3$sta_lme, fall3$yr),]
 
+fall3[which(fall3$yr==2011 & fall3$sta_lme=="fmwt_902"),]
+
+# Check for duplicate study-station-years
+paste(fall3$yr, fall3$sta_lme, sep="_")[duplicated(paste(fall3$yr, fall3$sta_lme, sep="_"))]
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~ Bay Study "no_fish_caught"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Load Bay Study original dataset and add season
+data(Baystudy)
 Baystudy$Survey = as.integer(format(Baystudy$Date, format="%m"))
-BayStudyMWT = subset(Baystudy, Baystudy$Method=="Midwater trawl" & Baystudy$Survey %in% c(9,10,11))
-bs_no_fish = BayStudyMWT[which(BayStudyMWT$Length_NA_flag=="No fish caught" & BayStudyMWT$Station %in% bs_sta_above_thresh),]
-bs_no_fish_agg=aggregate(station_int ~ Source  + yr + Station ,data=bs_no_fish, FUN = length)
-bs_no_fish_agg[which(bs_no_fish_agg$Station=="101"),]
-data.frame(BayStudyMWT[which(BayStudyMWT$Station=="101" & BayStudyMWT$yr==1980),])
-data.frame(BayStudyMWT[which(BayStudyMWT$Station=="213" & BayStudyMWT$yr==2000),])
+Baystudy$yr = as.integer(format(Baystudy$Date, format="%Y"))
+Baystudy_red = Baystudy[which(Baystudy$Survey %in% c(9,10,11)),]
 
-bs_no_fish_agg = bs_no_fish_agg[which(bs_no_fish_agg$yr>1984 & bs_no_fish_agg$yr<2018),]
-bs_no_fish_agg$lme = rep("bs", times=dim(bs_no_fish_agg)[1])
-bs_no_fish_agg$sta_lme = paste(bs_no_fish_agg$lme, bs_no_fish_agg$Station, sep="_")
-bs_no_fish_agg$sta_lme_yr = paste(bs_no_fish_agg$sta_lme, bs_no_fish_agg$yr, sep="_")
+# Identify survey events without fish detected
+BayStudyMWT = subset(Baystudy_red, Baystudy_red$Method=="Midwater trawl")
+bs_no_fish = BayStudyMWT[which(BayStudyMWT$Length_NA_flag=="No fish caught" &
+                                 BayStudyMWT$Station %in% bs_sta_above_thresh),]
 
-fall_fish_caught = paste(fall3$sta_lme, fall3$yr, sep="_")
+#~~~~~~~~~~~
+# Aggregate annually; compare total surveys per year per station with
+#       total surveys per year per station without fish captured
+#~~~~~~~~~~~
+bs_survey_station_no_fish = aggregate(SampleID ~ Source + yr + Survey + Station, 
+                                           data = bs_no_fish, FUN = unique)
+bs_survey_station = aggregate(SampleID ~ Source + yr + Survey + Station, 
+                                   data = BayStudyMWT, FUN = unique)
 
-bs_no_fish_agg = bs_no_fish_agg[-which(bs_no_fish_agg$sta_lme_yr %in% unique(fall_fish_caught)),]
-bs_no_fish_caught = data.frame(yr = bs_no_fish_agg$yr, lme = bs_no_fish_agg$lme,
-                               sta_lme = bs_no_fish_agg$sta_lme)
+bs_survey_station_no_fish$event_count = lengths(bs_survey_station_no_fish$SampleID)
+bs_survey_station$event_count = lengths(bs_survey_station$SampleID)
+
+#~~ Aggregate to annual resolution
+bs_survey_year_station_no_fish = aggregate(event_count ~ Source + yr + Station, 
+                                      data = bs_survey_station_no_fish, FUN = sum)
+bs_survey_year_station_list = aggregate(event_count ~ Source + yr + Station, 
+                              data = bs_survey_station, FUN = sum)
+
+colnames(bs_survey_year_station_list)[length(names(bs_survey_year_station_list))] = 
+  "total_surveys_per_season"
+colnames(bs_survey_year_station_no_fish)[length(names(bs_survey_year_station_no_fish))] = 
+  "surveys_without_fish"
+
+bs_no_fish_merged = merge(bs_survey_year_station_list, bs_survey_year_station_no_fish)
+bs_zero_catch_index = which(bs_no_fish_merged$surveys_without_fish ==
+                              bs_no_fish_merged$total_surveys_per_season)
+bs_add_zeros = bs_no_fish_merged[bs_zero_catch_index,]
+
+# Add events without fish detected to the original "sea" dataset adding 0s for all fishes
+dim(bs_add_zeros)[1]/dim(bs_survey_year_station_list)[1]*100
+#~~  note 5 station-years were 0 detections; representing 0.29% of total Bay Study station-years
+bs_no_fish_caught = data.frame(yr = bs_add_zeros$yr,
+                               lme = rep("bs", dim(bs_add_zeros)[1]),
+                               sta_lme = paste(rep("bs", dim(bs_add_zeros)[1]),
+                                               bs_add_zeros$Station, sep="_"))
 
 for(i in 4:length(names(fall3))){
   bs_no_fish_caught = cbind(bs_no_fish_caught,rep(0, times=dim(bs_no_fish_caught)[1]))
   colnames(bs_no_fish_caught)[i]=names(fall3)[i]
 }
 fall3 = rbind(fall3,bs_no_fish_caught)
-
 fall3 = fall3[order(fall3$sta_lme, fall3$yr),]
+
+fall3[which(fall3$yr==2000 & fall3$sta_lme=="bs_213"),]
+
+# Check for duplicate study-station-years
+paste(fall3$yr, fall3$sta_lme, sep="_")[duplicated(paste(fall3$yr, fall3$sta_lme, sep="_"))]
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~ Suisun Marsh "no_fish_caught"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Load Suisun Marsh Study original dataset and add season
+data(Suisun)
+Suisun$Survey = as.integer(format(Suisun$Date, format="%m"))
+Suisun$yr = as.integer(format(Suisun$Date, format="%Y"))
+Suisun_red = Suisun[which(Suisun$Survey %in% c(9,10,11)),]
+
+# Identify survey events without fish detected
+SuisunOTR = subset(Suisun_red, Suisun_red$Method=="Otter trawl")
+ucd_no_fish = SuisunOTR[which(SuisunOTR$Length_NA_flag=="No fish caught" &
+                                SuisunOTR$Station %in% ucd_sta_above_thresh),]
+
+# Aggregate annually; compare total surveys per year per station with
+#       total surveys per season without fish captured
+ucd_survey_station_no_fish = aggregate(SampleID ~ Source + yr + Survey + Station, 
+                                       data = ucd_no_fish, FUN = unique)
+ucd_survey_station = aggregate(SampleID ~ Source + yr + Survey + Station, 
+                               data = SuisunOTR, FUN = unique)
+
+ucd_survey_station_no_fish$event_count = lengths(ucd_survey_station_no_fish$SampleID)
+ucd_survey_station$event_count = lengths(ucd_survey_station$SampleID)
+
+#~~ Aggregate to annual resolution
+ucd_survey_year_station_no_fish = aggregate(event_count ~ Source + yr + Station, 
+                                            data = ucd_survey_station_no_fish, FUN = sum)
+ucd_survey_year_station_list = aggregate(event_count ~ Source + yr + Station, 
+                                         data = ucd_survey_station, FUN = sum)
+
+colnames(ucd_survey_year_station_list)[length(names(ucd_survey_year_station_list))] = 
+  "total_surveys_per_season"
+colnames(ucd_survey_year_station_no_fish)[length(names(ucd_survey_year_station_no_fish))] = 
+  "surveys_without_fish"
+
+ucd_no_fish_merged = merge(ucd_survey_year_station_list, ucd_survey_year_station_no_fish)
+ucd_zero_catch_index = which(ucd_no_fish_merged$surveys_without_fish ==
+                               ucd_no_fish_merged$total_surveys_per_season)
+ucd_add_zeros = ucd_no_fish_merged[ucd_zero_catch_index,]
+
+# Add events without fish detected to the original "fall3" dataset adding 0s for all fishes
+#~~  note 0 station-years were 0 detections; representing 0% of total Suisun Marsh Study station-years
+
+
+############################################################################
+#~~     STEP 5: Scale and restructure data into an array framework for 
+#~~             Principal Tensor Analysis
+############################################################################
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Standardize by z-scoring per taxa per study-gear
@@ -128,289 +260,10 @@ sub_scale=apply(sub2, MARGIN = 2,
 sub_scale[is.na(sub_scale)]=0
 fall3_scaled=cbind(fall3[,c(1:3)], sub_scale)
 
-colSums(fall3_scaled[,-c(1:3)])
-
-#~~~~~~~~~~~~~~
-# Check to make sure "no fish caught" years have zeros
-head(fall[which(fall$sta_lme=="bs_433"),], n = 15)
-table(fall[which(fall$sta_lme=="bs_433"),"yr"])
-
-fall3_scaled[which(fall3_scaled$sta_lme=="bs_433"),]
-table(fall3_scaled[which(fall3_scaled$sta_lme=="bs_433"),"yr"])
-
-#~~~~~~~~~~~~~~
-# Check to make sure "no fish caught" years have zeros
-fall[which(fall$sta_lme=="fmwt_908"),]
-table(fall[which(fall$sta_lme=="fmwt_908"),"yr"])
-
-fall3_scaled[which(fall3_scaled$sta_lme=="fmwt_908"),]
-table(fall3_scaled[which(fall3_scaled$sta_lme=="fmwt_908"),"yr"])
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~ Standardize by z-scoring per taxa per study-gear
-# iqr_score = function(x){
-#   (x-median(x))/1.5*(IQR(x))
-# }
-
-# fall3_scaled = fall3
-# fall3_lme = unique(fall3$lme)
-# 
-# for(i in 1:length(fall3_lme)){
-#   sub = fall3[which(fall3$lme==fall3_lme[i]),]
-#   sub2 = sub[,-c(1:9)]
-#   sub2 = (sub2)^(1/3)
-#   sub_scale=apply(sub2, MARGIN = 2,
-#                   FUN = function(x){
-#                     (x-mean(x))/sd(x)
-#                   }
-#   )
-#   sub_scale[is.na(sub_scale)]=0
-#   fall3_scaled[which(fall3$lme==fall3_lme[i]),-c(1:9)]=sub_scale
-# }
-# 
-# names(fall3_scaled)
-##############
-par(mfrow=c(2,3), mar=c(4.5, 2, 1,1)+0.1)
-hist(fall3[,"Striped.Bass"][which(fall3[,"Striped.Bass"]>0)], breaks=30)
-hist((fall3[,"Striped.Bass"][which(fall3[,"Striped.Bass"]>0)])^(1/3), breaks=30)
-hist(fall3_scaled[,"Striped.Bass"][which(fall3[,"Striped.Bass"]>0)], breaks=30)
-hist(fall3[,"Starry.Flounder"][which(fall3[,"Starry.Flounder"]>0)], breaks=30)
-hist((fall3[,"Starry.Flounder"][which(fall3[,"Starry.Flounder"]>0)])^(1/3), breaks=30)
-hist(fall3_scaled[,"Starry.Flounder"][which(fall3[,"Starry.Flounder"]>0)], breaks=30)
-
-# pdf(file = "Count_v_CPUE.pdf", width=10, height=7, paper = "special")
-# quartz(height=5, width=8)
-par(mfrow=c(2,3), mar=c(4.5, 5, 1,1)+0.1, oma=c(0,0,0,0))
-boxplot((count_fall[,"Striped.Bass"]^(1/3))[which(count_fall[,"Striped.Bass"]>0)] ~
-          count_fall[,"lme"][which(count_fall[,"Striped.Bass"]>0)],
-        las=1, ylab="cube-root(raw count)", xlab="Striped Bass",
-        pch=20,col=gray(0.2,0.2), outcol=gray(0.2,0.2))
-boxplot((fall3[,"Striped.Bass"]^(1/3))[which(fall3[,"Striped.Bass"]>0)] ~
-          fall3[,"lme"][which(fall3[,"Striped.Bass"]>0)],
-        las=1, ylab="cube-root(raw CPUE)", xlab="Striped Bass",
-        pch=20,col=gray(0.2,0.2),outcol=gray(0.2,0.2))
-boxplot(fall3_scaled[,"Striped.Bass"][which(fall3[,"Striped.Bass"]>0)] ~ 
-          fall3_scaled[,"lme"][which(fall3[,"Striped.Bass"]>0)],
-        las=1, ylab="z-scored cube-root CPUE", xlab="Striped Bass",
-        pch=20,col=gray(0.2,0.2), outcol=gray(0.2,0.2))
-boxplot((count_fall[,"Yellowfin.Goby"]^(1/3))[which(count_fall[,"Yellowfin.Goby"]>0)] ~
-          count_fall[,"lme"][which(count_fall[,"Yellowfin.Goby"]>0)],
-        las=1, ylab="cube-root(raw count)", xlab="Yellowfin Goby",
-        pch=20,col=gray(0.2,0.2), outcol=gray(0.2,0.2))
-boxplot((fall3[,"Yellowfin.Goby"]^(1/3))[which(fall3[,"Yellowfin.Goby"]>0)] ~
-          fall3[,"lme"][which(fall3[,"Yellowfin.Goby"]>0)],
-        las=1, ylab="cube-root(raw CPUE)", xlab="Yellowfin Goby",
-        pch=20,col=gray(0.2,0.2), outcol=gray(0.2,0.2))
-boxplot(fall3_scaled[,"Yellowfin.Goby"][which(fall3[,"Yellowfin.Goby"]>0)] ~
-          fall3_scaled[,"lme"][which(fall3[,"Yellowfin.Goby"]>0)],
-        las=1, ylab="z-scored cube-root CPUE", xlab="Yellowfin Goby",
-        pch=20,col=gray(0.2,0.2), outcol=gray(0.2,0.2))
-# dev.off()
-
-###################
-
-
-
-par(mfrow=c(1,2), mar=c(8, 4.5, 1,1)+0.1)
-boxplot(fall3[,-c(1:9)], las=2, cex.axis=0.65,
-        pch=20, outcol=gray(0.1,0.1), yaxt='n')
-axis(2, las=1, cex=0.8)
-boxplot(fall3_scaled[,-c(1:9)], las=2,cex.axis=0.65,
-        pch=20, outcol=gray(0.1, 0.1), yaxt='n')
-axis(2, las=1, cex=0.8)
-
-par(mfrow=c(1,2), mar=c(8, 4.5, 1,1)+0.1)
-boxplot(fall3[,-c(1:9)], las=2,
-        ylim=c(quantile(unlist(fall3[,-c(1:9)]), probs = c(0,0.975))),
-        ylab = "min to 97.5%-tile", cex.axis=0.65,
-        pch=20, outcol=gray(0.1,0.1), yaxt='n')
-axis(2, las=1, cex=0.8)
-boxplot(fall3_scaled[,-c(1:9)], las=2,
-        ylim=c(quantile(unlist(fall3_scaled[,-c(1:9)]), probs = c(0,0.975))),
-        ylab = "min to 97.5%-tile", cex.axis=0.65,
-        pch=20, outcol=gray(0.1,0.1), yaxt='n')
-axis(2, las=1, cex=0.8)
-
-raw_xlims=range(fall3[,"Striped.Bass"])
-cuberoot_xlims=range((fall3[,"Striped.Bass"])^(1/3))
-scaled_xlims=range(fall3_scaled[,"Striped.Bass"])
-
-par(mfrow=c(2,3), mar=c(4.5, 2, 1,1)+0.1)
-hist(fall3[,"Striped.Bass"], breaks=30)
-hist((fall3[,"Striped.Bass"])^(1/3), breaks=30)
-hist(fall3_scaled[,"Striped.Bass"], breaks=30)
-hist(fall3[,"Yellowfin.Goby"], breaks=30)
-hist((fall3[,"Yellowfin.Goby"])^(1/3), breaks=30)
-hist(fall3_scaled[,"Yellowfin.Goby"], breaks=30)
-
-
-par(mfrow=c(2,3), mar=c(4.5, 2, 1,1)+0.1)
-hist(fall3[,"Striped.Bass"], xlim=raw_xlims)
-hist((fall3[,"Striped.Bass"])^(1/3), xlim=cuberoot_xlims)
-hist(fall3_scaled[,"Striped.Bass"], xlim=scaled_xlims)
-hist(fall3[,"Yellowfin.Goby"], xlim=raw_xlims)
-hist((fall3[,"Yellowfin.Goby"])^(1/3), xlim=cuberoot_xlims)
-hist(fall3_scaled[,"Yellowfin.Goby"], xlim=scaled_xlims)
-
-
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~    Kernal Density visualizations and overlap calculation
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#~~ RAW
-lower_raw <- min(c(fall3[,"Striped.Bass"], fall3[,"Yellowfin.Goby"]))
-upper_raw <- max(c(fall3[,"Striped.Bass"], fall3[,"Yellowfin.Goby"]))
-dNAC_raw <- density(fall3[,"Striped.Bass"], from=lower_raw, to=upper_raw,
-                    adjust=2, cut=TRUE)
-dYFG_raw <- density(fall3[,"Yellowfin.Goby"], from=lower_raw, to=upper_raw,
-                    adjust=2, cut=TRUE)
-df_raw <- data.frame(x=dNAC_raw$x, a=dNAC_raw$y, b=dYFG_raw$y)
-# calculate intersection densities
-df_raw$w <- pmin(df_raw$a, df_raw$b)
-# integrate areas under curves
-total_raw <- integrate.xy(df_raw$x, df_raw$a) + integrate.xy(df_raw$x, df_raw$b)
-intersection_raw <- integrate.xy(df_raw$x, df_raw$w)
-# compute overlap coefficient
-overlap_raw <- 2 * intersection_raw / total_raw
-
-#~~ CUBE-ROOT
-lower_cubeRoot <- min(c((fall3[,"Striped.Bass"])^(1/3), (fall3[,"Yellowfin.Goby"])^(1/3)))
-upper_cubeRoot <- max(c((fall3[,"Striped.Bass"])^(1/3), (fall3[,"Yellowfin.Goby"])^(1/3)))
-dNAC_cubeRoot <- density((fall3[,"Striped.Bass"])^(1/3), from=lower_cubeRoot, to=upper_cubeRoot,
-                         adjust=2, cut=TRUE)
-dYFG_cubeRoot <- density((fall3[,"Yellowfin.Goby"])^(1/3), from=lower_cubeRoot, to=upper_cubeRoot,
-                         adjust=2, cut=TRUE)
-df_cubeRoot <- data.frame(x=dNAC_cubeRoot$x, a=dNAC_cubeRoot$y, b=dYFG_cubeRoot$y)
-# calculate intersection densities
-df_cubeRoot$w <- pmin(df_cubeRoot$a, df_cubeRoot$b)
-# integrate areas under curves
-total_cubeRoot <- integrate.xy(df_cubeRoot$x, df_cubeRoot$a) + integrate.xy(df_cubeRoot$x, df_cubeRoot$b)
-intersection_cubeRoot <- integrate.xy(df_cubeRoot$x, df_cubeRoot$w)
-# compute overlap coefficient
-overlap_cubeRoot <- 2 * intersection_cubeRoot / total_cubeRoot
-
-#~~ SCALED
-lower_scaled <- min(c(fall3_scaled[,"Striped.Bass"], fall3_scaled[,"Yellowfin.Goby"]))
-upper_scaled <- max(c(fall3_scaled[,"Striped.Bass"], fall3_scaled[,"Yellowfin.Goby"]))
-dNAC_scaled <- density(fall3_scaled[,"Striped.Bass"], from=lower_scaled, to=upper_scaled,
-                       adjust=1, cut=TRUE)
-dYFG_scaled <- density(fall3_scaled[,"Yellowfin.Goby"], from=lower_scaled, to=upper_scaled,
-                       adjust=1, cut=TRUE)
-df_scaled <- data.frame(x=dNAC_scaled$x, a=dNAC_scaled$y, b=dYFG_scaled$y)
-# calculate intersection densities
-df_scaled$w <- pmin(df_scaled$a, df_scaled$b)
-# integrate areas under curves
-total_scaled <- integrate.xy(df_scaled$x, df_scaled$a) + integrate.xy(df_scaled$x, df_scaled$b)
-intersection_scaled <- integrate.xy(df_scaled$x, df_scaled$w)
-# compute overlap coefficient
-overlap_scaled <- 2 * intersection_scaled / total_scaled
-
-
-
-#~~~~~~~~~~~~
-#~ Plot
-
-# pdf(file = "Standardization_density_plot.pdf", width=10, height=4, paper = "special")
-# quartz(height=4, width=10)
-par(mfrow=c(1,3), mar=c(4, 4, 2.25,1.5)+0.1, oma=c(0.5,2.5,0.5,0.5))
-plot(range(dNAC_raw$x, dYFG_raw$x), range(dNAC_raw$y, dYFG_raw$y), las=1, type='n',
-     ylab="", xlab="")
-polygon(x = c(dYFG_raw$x[1], dYFG_raw$x[512], rev(dYFG_raw$x), dYFG_raw$x[1]), 
-        y = c(0, 0, rev(dYFG_raw$y), dYFG_raw$y[1]), 
-        col=gray(0.2,0.6), lwd=0.1)
-polygon(x = c(dNAC_raw$x[1], dNAC_raw$x[512], rev(dNAC_raw$x), dNAC_raw$x[1]), 
-        y = c(0, 0, rev(dNAC_raw$y), dNAC_raw$y[1]), 
-        col=rgb(0.1,0.5,0.85, maxColorValue = 1, alpha=0.5), lwd=0.1)
-mtext(text = "Density (a metric of relative probability)", side = 2,line = 4, cex=0.85)
-mtext(text = "CPUE", side = 1,line = 2.5, cex=0.85)
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.95)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Striped Bass range =",
-           round(min(fall3[,"Striped.Bass"]), digits=2), "-",
-           round(max(fall3[,"Striped.Bass"]), digits=2), sep=" "))
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.9)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Yellowfin Goby range =",
-           round(min(fall3[,"Yellowfin.Goby"]), digits=2), "-",
-           round(max(fall3[,"Yellowfin.Goby"]), digits=2), sep=" "))
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.85)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Distribution Overlap = ~",
-           round(overlap_raw, digits=2)*100, "%", sep=""))
-
-plot(range(dNAC_cubeRoot$x, dYFG_cubeRoot$x), range(dNAC_cubeRoot$y, dYFG_cubeRoot$y), las=1, type='n',
-     ylab="", xlab="")
-polygon(x = c(dYFG_cubeRoot$x[1], dYFG_cubeRoot$x[512], rev(dYFG_cubeRoot$x), dYFG_cubeRoot$x[1]), 
-        y = c(0, 0, rev(dYFG_cubeRoot$y), dYFG_cubeRoot$y[1]), 
-        col=gray(0.2,0.6), lwd=0.1)
-polygon(x = c(dNAC_cubeRoot$x[1], dNAC_cubeRoot$x[512], rev(dNAC_cubeRoot$x), dNAC_cubeRoot$x[1]), 
-        y = c(0, 0, rev(dNAC_cubeRoot$y), dNAC_cubeRoot$y[1]), 
-        col=rgb(0.1,0.5,0.85, maxColorValue = 1, alpha=0.5), lwd=0.1)
-mtext(text = bquote(sqrt(CPUE, 3)), side = 1,line = 2.5, cex=0.85)
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.95)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Striped Bass range =",
-           round(min((fall3[,"Striped.Bass"])^(1/3)), digits=2), "-",
-           round(max((fall3[,"Striped.Bass"])^(1/3)), digits=2), sep=" "))
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.9)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Yellowfin Goby range =",
-           round(min((fall3[,"Yellowfin.Goby"])^(1/3)), digits=2), "-",
-           round(max((fall3[,"Yellowfin.Goby"])^(1/3)), digits=2), sep=" "))
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.85)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Distribution Overlap = ~",
-           round(overlap_cubeRoot, digits=2)*100, "%", sep=""))
-
-
-plot(range(dNAC_scaled$x, dYFG_scaled$x), range(dNAC_scaled$y, dYFG_scaled$y), las=1, type='n',
-     ylab="", xlab="")
-polygon(x = c(dYFG_scaled$x[1], dYFG_scaled$x[512], rev(dYFG_scaled$x), dYFG_scaled$x[1]), 
-        y = c(0, 0, rev(dYFG_scaled$y), dYFG_scaled$y[1]), 
-        col=gray(0.2,0.6), lwd=0.1)
-polygon(x = c(dNAC_scaled$x[1], dNAC_scaled$x[512], rev(dNAC_scaled$x), dNAC_scaled$x[1]), 
-        y = c(0, 0, rev(dNAC_scaled$y), dNAC_scaled$y[1]), 
-        col=rgb(0.1,0.5,0.85, maxColorValue = 1, alpha=0.5), lwd=0.1)
-mtext(text = bquote(z-scored~sqrt(CPUE, 3)), side = 1,line = 2.5, cex=0.85)
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.95)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Striped Bass range =",
-           round(min(fall3_scaled[,"Striped.Bass"]), digits=2), "-",
-           round(max(fall3_scaled[,"Striped.Bass"]), digits=2), sep=" "))
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.9)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Yellowfin Goby range =",
-           round(min(fall3_scaled[,"Yellowfin.Goby"]), digits=2), "-",
-           round(max(fall3_scaled[,"Yellowfin.Goby"]), digits=2), sep=" "))
-text(((par('usr')[2]-par('usr')[1])*0.5)+par('usr')[1],
-     ((par('usr')[4]-par('usr')[3])*0.85)+par('usr')[3],
-     cex=1, pos=1,
-     paste("Distribution Overlap = ~",
-           round(overlap_scaled, digits=2)*100, "%", sep=""))
-
-par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
-plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
-legend("top", legend = c("Striped Bass", "Yellowfin Goby") , pch=22,
-       pt.bg = c(rgb(0.1,0.5,0.85, maxColorValue = 1, alpha=0.5), gray(0.2,0.6))
-       , xpd=TRUE, inset=c(0, 0), bty='n', horiz=TRUE, pt.cex=3, cex=1.25) 
-# dev.off()
-
-range(fall3[,-c(1:3)])
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Convert data into array format
-#~  [fall3son_timeseries_number, taxa, station]
+#~  [season_timeseries_number, taxa, station]
 
 fall3_stations = sort(unique(fall3_scaled$sta_lme))
 year_seq=min(fall3_scaled$yr):max(fall3_scaled$yr)
@@ -424,9 +277,6 @@ fall3_scaled_arr=array(data = NA, dim = c(length(year_seq),
                                      "station"=fall3_stations)
 )
 
-#fall3_scaled[order(fall3_scaled$sta_lme, fall3_scaled$yr),]
-
-
 dim(fall3_scaled_arr)
 for(i in 1:length(fall3_stations)){
   sub = fall3_scaled[which(fall3_scaled$sta_lme==fall3_stations[i]),]
@@ -439,16 +289,13 @@ for(i in 1:length(fall3_stations)){
   
 }
 
-#check to make sure fall has zeros for "no_fish_caught" (i.e., no NAs for station)
-fall3_scaled_arr[20:33,,128]
-
 na_list=list()
 for(i in 1:dim(fall3_scaled_arr)[3]){
   names(fall3_scaled_arr[is.na(fall3_scaled_arr[,2,i]),1,i])
   na_list[i]=list(names(fall3_scaled_arr[is.na(fall3_scaled_arr[,2,i]),1,i]))
 }
 
-fall3_scaled_arr[,,127]
+fall3_scaled_arr[,,146]
 fall3_stations[127]
 fall3[which(fall3$sta_lme=="fmwt_908"),]
 
