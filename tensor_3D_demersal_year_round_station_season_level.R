@@ -3,7 +3,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    Cluster analysis of demersal, year-round data
 #~    Script created on March 19, 2020 by JW Gaeta
-#~    Script last modified on Novemebr 9, 2020 by JW Gaeta
+#~    Script last modified on Novemebr 10, 2020 by JW Gaeta
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #############################################################################
 

@@ -3,7 +3,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    Cluster analysis of open water, fall-only data
 #~    Script created on March 19, 2020 by JW Gaeta
-#~    Script last modified on October 30, 2020 by JW Gaeta
+#~    Script last modified on November 10, 2020 by JW Gaeta
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #############################################################################
 
