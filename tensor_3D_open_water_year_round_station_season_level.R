@@ -3,7 +3,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    Cluster analysis of open water, year-round data
 #~    Script created on March 19, 2020 by JW Gaeta
-#~    Script last modified on October 29, 2020 by JW Gaeta
+#~    Script last modified on November 10, 2020 by JW Gaeta
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #############################################################################
 
@@ -94,7 +94,15 @@ sea=as.data.frame(sea)
 #~~             i.e., instances of zero detection NOT skipped surveys
 ############################################################################
 
-# NOTE: added 79 season-stations with zero catch, which is 1.03% of season-stations
+
+
+######
+#       NOTE: the following resulted in the addition of:
+#               70 BS station-season-years without fish detected
+#               1 UCD station-season-years without fish detected
+#       The addition of these 71 zero-catch station-years increased the 
+#       sea dataset by 0.93 %
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~ Bay Study "no_fish_caught"
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,6 +116,7 @@ bs_season_number[which(Baystudy$Survey %in% c(3,4,5))]=2
 bs_season_number[which(Baystudy$Survey %in% c(6,7,8))]=3
 bs_season_number[which(Baystudy$Survey %in% c(9,10,11))]=4
 Baystudy = data.frame(data.frame(season_number=bs_season_number), Baystudy)
+Baystudy = Baystudy[which(Baystudy$yr>1979 & Baystudy$yr<2018),]
 
 bs_season_year = Baystudy$yr
 bs_season_year[which(Baystudy$Survey==12)]=
@@ -117,37 +126,43 @@ Baystudy$season_year=bs_season_year
 bs_season_yr = paste(Baystudy$season_year, Baystudy$season_number, sep="_")
 Baystudy = data.frame(data.frame(season_yr=bs_season_yr), Baystudy)
 
-
 # Identify survey events without fish detected
 BayStudyMWT = subset(Baystudy, Baystudy$Method=="Midwater trawl")
 bs_no_fish = BayStudyMWT[which(BayStudyMWT$Length_NA_flag=="No fish caught" &
                                  BayStudyMWT$Station %in% bs_sta_above_thresh),]
 
-# Aggregate seasonally; compare total surveys per season per station with
-#       total surveys per season without fish captured
-bs_survey_year_station_no_fish = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                           + season_year + Station, data = bs_no_fish, FUN = length)
-bs_survey_year_station = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                   + season_year + Station, data = BayStudyMWT, FUN = length)
+# Aggregate by survey event; compare total events per survey per year per station to
+#       total events per survey per year per station without fish captured
+bs_survey_station_no_fish = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                                      + season_year + Station, data = bs_no_fish, FUN = unique)
+bs_survey_station = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                              + season_year + Station, data = BayStudyMWT, FUN = unique)
 
-bs_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                    season_year + Station, data = bs_survey_year_station, FUN = length)
-colnames(bs_surveys_per_season)[length(names(bs_surveys_per_season))] = "total_surveys_per_season"
+bs_survey_station_no_fish$event_count = lengths(bs_survey_station_no_fish$SampleID)
+bs_survey_station$event_count = lengths(bs_survey_station$SampleID)
 
-bs_no_fish_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                            season_year + Station,
-                                          data = bs_survey_year_station_no_fish, FUN = length)
-colnames(bs_no_fish_surveys_per_season)[length(names(bs_no_fish_surveys_per_season))] = 
+#~~ Aggregate to season-year resolution
+bs_survey_season_station_no_fish = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                               season_year + Station, 
+                                             data = bs_survey_station_no_fish, FUN = sum)
+bs_survey_season_station = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                       season_year + Station, 
+                                     data = bs_survey_station, FUN = sum)
+
+colnames(bs_survey_season_station)[length(names(bs_survey_season_station))] = 
+  "total_surveys_per_season"
+colnames(bs_survey_season_station_no_fish)[length(names(bs_survey_season_station_no_fish))] = 
   "surveys_without_fish"
 
-bs_no_fish_merged = merge(bs_surveys_per_season, bs_no_fish_surveys_per_season)
-
+bs_no_fish_merged = merge(bs_survey_season_station, bs_survey_season_station_no_fish)
 bs_zero_catch_index = which(bs_no_fish_merged$surveys_without_fish ==
                               bs_no_fish_merged$total_surveys_per_season)
 bs_add_zeros = bs_no_fish_merged[bs_zero_catch_index,]
+bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="2018_1"),]
 
 # Add events without fish detected to the original "sea" dataset adding 0s for all fishes
-#~~  note 78 season-stations were 0 detections; representing 1.50% of total Bay Study season-stations
+dim(bs_add_zeros)[1]/dim(sea[which(sea$lme=="bs"),])[1]*100
+#~~  note 70 station-season-years were 0 detections; representing 1.37% of total Bay Study station-season-years
 bs_no_fish_caught = data.frame(season_yr = bs_add_zeros$season_yr,
                                season_number = bs_add_zeros$season_number, 
                                season_year = bs_add_zeros$season_year,
@@ -162,8 +177,13 @@ for(i in 9:length(names(sea))){
   bs_no_fish_caught = cbind(bs_no_fish_caught,rep(0, times=dim(bs_no_fish_caught)[1]))
   colnames(bs_no_fish_caught)[i]=names(sea)[i]
 }
-sea2 = rbind(sea,bs_no_fish_caught)
-sea2 = sea2[order(sea2$sta_lme, sea2$season_year),]
+sea = rbind(sea,bs_no_fish_caught)
+sea = sea[order(sea$sta_lme, sea$season_yr),]
+
+sea[which(sea$season_year=="1980" & sea$sta_lme=="bs_320"),]
+
+# Check for duplicate study-station-years; this shoudl return "character(0)" if all is well
+paste(sea$season_yr, sea$sta_lme, sep="_")[duplicated(paste(sea$season_yr, sea$sta_lme, sep="_"))]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~ UC Davis Suisun Marsh Study "no_fish_caught"
@@ -176,6 +196,7 @@ ucd_season_number[which(Suisun$Survey %in% c(3,4,5))]=2
 ucd_season_number[which(Suisun$Survey %in% c(6,7,8))]=3
 ucd_season_number[which(Suisun$Survey %in% c(9,10,11))]=4
 Suisun = data.frame(data.frame(season_number=ucd_season_number), Suisun)
+Suisun = Suisun[which(Suisun$yr>1979 & Suisun$yr<2018),]
 
 ucd_season_year = Suisun$yr
 ucd_season_year[which(Suisun$Survey==12)]=
@@ -185,40 +206,47 @@ Suisun$season_year=ucd_season_year
 ucd_season_yr = paste(Suisun$season_year, Suisun$season_number, sep="_")
 Suisun = data.frame(data.frame(season_yr=ucd_season_yr), Suisun)
 
-
 # Identify survey events without fish detected
+SuisunOTR = subset(Suisun, Suisun$Method=="Otter trawl")
+ucd_no_fish = SuisunOTR[which(SuisunOTR$Length_NA_flag=="No fish caught" &
+                                SuisunOTR$Station %in% ucd_sta_above_thresh),]
 
-ucd_no_fish = Suisun[which(Suisun$Length_NA_flag=="No fish caught" &
-                             Suisun$Station %in% ucd_sta_above_thresh),]
+# Aggregate by survey event; compare total events per survey per year per station to
+#       total events per survey per year per station without fish captured
+ucd_survey_station_no_fish = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                                       + season_year + Station, data = ucd_no_fish, FUN = unique)
+ucd_survey_station = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                               + season_year + Station, data = SuisunOTR, FUN = unique)
+#the following checks for 2 sample events durign a given survey (month)
+ucd_survey_station_no_fish$event_count = lengths(ucd_survey_station_no_fish$SampleID)
+ucd_survey_station$event_count = lengths(ucd_survey_station$SampleID)
 
-# Aggregate seasonally; compare total surveys per season per station with
-#       total surveys per season without fish captured
-ucd_survey_year_station_no_fish = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                            + season_year + Station, data = ucd_no_fish, FUN = length)
-ucd_survey_year_station = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                    + season_year + Station, data = Suisun, FUN = length)
+#~~ Aggregate to season-year resolution
+ucd_survey_season_station_no_fish = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                                season_year + Station, 
+                                              data = ucd_survey_station_no_fish, FUN = sum)
+ucd_survey_season_station = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                        season_year + Station, 
+                                      data = ucd_survey_station, FUN = sum)
 
-ucd_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                     season_year + Station, data = ucd_survey_year_station, FUN = length)
-colnames(ucd_surveys_per_season)[length(names(ucd_surveys_per_season))] = "total_surveys_per_season"
-
-ucd_no_fish_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                             season_year + Station,
-                                           data = ucd_survey_year_station_no_fish, FUN = length)
-colnames(ucd_no_fish_surveys_per_season)[length(names(ucd_no_fish_surveys_per_season))] = 
+colnames(ucd_survey_season_station)[length(names(ucd_survey_season_station))] = 
+  "total_surveys_per_season"
+colnames(ucd_survey_season_station_no_fish)[length(names(ucd_survey_season_station_no_fish))] = 
   "surveys_without_fish"
 
-ucd_no_fish_merged = merge(ucd_surveys_per_season, ucd_no_fish_surveys_per_season)
-
-ucd_zero_catch_index = which(ucd_no_fish_merged$surveys_without_fish == ucd_no_fish_merged$total_surveys_per_season)
+ucd_no_fish_merged = merge(ucd_survey_season_station, ucd_survey_season_station_no_fish)
+ucd_zero_catch_index = which(ucd_no_fish_merged$surveys_without_fish ==
+                               ucd_no_fish_merged$total_surveys_per_season)
 ucd_add_zeros = ucd_no_fish_merged[ucd_zero_catch_index,]
+ucd_add_zeros = ucd_add_zeros[-which(ucd_add_zeros$season_yr=="2018_1"),]
 
 # Add events without fish detected to the original "sea" dataset adding 0s for all fishes
-#~~  note 1 season-stations had 0 detections; representing 0.04% of total season-stations
+dim(ucd_add_zeros)[1]/dim(sea[which(sea$lme=="ucd"),])[1]*100
+#~~  note 1 station-season-years were 0 detections; representing 0.04% of total UC Davis Suisun station-season-years
 ucd_no_fish_caught = data.frame(season_yr = ucd_add_zeros$season_yr,
                                 season_number = ucd_add_zeros$season_number, 
                                 season_year = ucd_add_zeros$season_year,
-                                Method = rep("Midwater trawl", dim(ucd_add_zeros)[1]),
+                                Method = rep("Otter trawl", dim(ucd_add_zeros)[1]),
                                 Source = ucd_add_zeros$Source,
                                 lme = rep("ucd", dim(ucd_add_zeros)[1]),
                                 sta_lme = paste(rep("ucd", dim(ucd_add_zeros)[1]),
@@ -229,8 +257,13 @@ for(i in 9:length(names(sea))){
   ucd_no_fish_caught = cbind(ucd_no_fish_caught,rep(0, times=dim(ucd_no_fish_caught)[1]))
   colnames(ucd_no_fish_caught)[i]=names(sea)[i]
 }
-sea2 = rbind(sea,ucd_no_fish_caught)
-sea2 = sea2[order(sea2$sta_lme, sea2$season_year),]
+sea = rbind(sea,ucd_no_fish_caught)
+sea = sea[order(sea$sta_lme, sea$season_yr),]
+
+sea[which(sea$season_year=="2005" & sea$sta_lme=="ucd_MZ1"),]
+
+# Check for duplicate study-station-years; this shoudl return "character(0)" if all is well
+paste(sea$season_yr, sea$sta_lme, sep="_")[duplicated(paste(sea$season_yr, sea$sta_lme, sep="_"))]
 
 
 ############################################################################
@@ -240,15 +273,15 @@ sea2 = sea2[order(sea2$sta_lme, sea2$season_year),]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ create unique variables for season-station spatiotemporal resolution
-season_count_df = data.frame(season_count = c(1:length(unique(sea2$season_yr))),
-                             season_yr=sort(unique(sea2$season_yr)))
-sea2 = merge(season_count_df, sea2, all=TRUE)
+season_count_df = data.frame(season_count = c(1:length(unique(sea$season_yr))),
+                             season_yr=sort(unique(sea$season_yr)))
+sea = merge(season_count_df, sea, all=TRUE)
 
-sea_lme = unique(sea2$lme)
+sea_lme = unique(sea$lme)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Increase normality by cube-root transformation
-sub2 = sea2[,-c(1:9)]
+sub2 = sea[,-c(1:9)]
 sub2 = (sub2)^(1/3)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -259,19 +292,15 @@ sub_scale=apply(sub2, MARGIN = 2,
                 }
 )
 sub_scale[is.na(sub_scale)]=0
-sea_scaled=cbind(sea2[,c(1:9)], sub_scale)
-
-test_2000_4 = subset(sea_scaled, sea_scaled$season_yr=="2000_4")
-
-test_2000_4[order(test_2000_4$Station),]
+sea_scaled=cbind(sea[,c(1:9)], sub_scale)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~ Convert data into array format
 #~    Array dimensions: [season_timeseries_number, taxa, station]
 
-sea_stations = sort(unique(sea2$sta_lme))
-season_seq=1:max(sea2$season_count)
-taxa=colnames(sea2[,-c(1:9)])
+sea_stations = sort(unique(sea$sta_lme))
+season_seq=1:max(sea$season_count)
+taxa=colnames(sea[,-c(1:9)])
 
 sea_scaled_arr=array(data = NA, dim = c(length(season_seq),
                          length(taxa),
@@ -312,7 +341,7 @@ timesteps_to_cut = c(which(rowSums(na_step_station) > 0))
 #~~  Cut timesteps
 dim(sea_scaled_arr)
 red_sea_arr = sea_scaled_arr[-timesteps_to_cut,,]
-
+dim(red_sea_arr)
 ############################################################################
 #~~     STEP 6: Perform Principal tensor analysis 
 #~~             Methods based on:
@@ -334,7 +363,7 @@ barplot(sort(gct, decreasing = TRUE), xlab="PT",
         ylab="Percentage of variance", las=1); box(which="plot")
 keep = c(1,3,11)
 
-sea_summary = aggregate(season_year ~ season_number + season_count + season_year, FUN=unique, data=sea2)
+sea_summary = aggregate(season_year ~ season_number + season_count + season_year, FUN=unique, data=sea)
 sea_summary$yr=substr(as.character(sea_summary$season_year), start=3, stop=4)
 sea_summary = subset(sea_summary, sea_summary$season_count %in% as.numeric(pta[[1]]$n))
 
@@ -345,7 +374,6 @@ rownames(coo) = pta[[2]]$n
 PT_associations = c("PT1: Spatial (region)", "PT2: Spatial (sub-region)", 
                     "PT3: Temporal (season & year)")
 labkeep <- paste0(PT_associations, "\n(",pta[[3]]$vsnam[keep], " - ", round((100 * (pta[[3]]$d[keep])^2)/pta[[3]]$ssX[1],1), "%)")
-
 
 
 ############################################################################
@@ -471,7 +499,7 @@ axis(1, asw_maxima[1]-1.5, "(alternative k)", col="darkgreen",
 red_dend_ave <- as.dendrogram(hclust.avg, hang=-1)
 red_dend_ave <- rotate(red_dend_ave, 1:length(hclust.avg$labels))
 
-optim_k = 7
+optim_k = 5
 cutg = cutree(hclust.avg, k = optim_k)
 sil = silhouette(cutg, dist1)
 silo = sortSilhouette(sil)
@@ -510,13 +538,12 @@ rect.dendrogram(taxa_dendro_black, k=nclust,
 #~~   Biplot
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-taxa_cluster_names = c("Freshwater", 
+taxa_cluster_names = c("Fresh: Splittail+", 
                        "Shads",
-                       "Marine: Sardine+",
+                       "Topsmelt",
+                       "Marine: Surfperches+",
                        "Anchovy & Jacksmelt",
-                       "Marine: Croaker+",
-                       "ESA Smelts",
-                       "Staghorn+")
+                       "ESA Smelts")
 
 par(mfrow=c(1,2), mar=c(4,4,1.5,1.5)+0.1)
 s.class(coo, fac = clust_3D, xax=1, yax=2,
