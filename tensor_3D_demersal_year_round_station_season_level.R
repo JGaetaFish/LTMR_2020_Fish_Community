@@ -123,8 +123,6 @@ BayStudyOTR = subset(Baystudy, Baystudy$Method=="Otter trawl")
 bs_no_fish = BayStudyOTR[which(BayStudyOTR$Length_NA_flag=="No fish caught" &
                                  BayStudyOTR$Station %in% bs_sta_above_thresh),]
 
-subset(BayStudyOTR, BayStudyOTR$season_yr=="2017_3" & BayStudyOTR$Station==102)
-
 # Aggregate seasonally; compare total surveys per season per station with
 #       total surveys per season without fish captured
 bs_survey_year_station_no_fish = aggregate(yr ~ Source + season_number  + season_yr + Survey 
