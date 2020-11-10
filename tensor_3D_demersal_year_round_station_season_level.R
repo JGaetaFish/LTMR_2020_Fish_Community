@@ -3,7 +3,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~    Cluster analysis of demersal, year-round data
 #~    Script created on March 19, 2020 by JW Gaeta
-#~    Script last modified on October 30, 2020 by JW Gaeta
+#~    Script last modified on Novemebr 9, 2020 by JW Gaeta
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #############################################################################
 
@@ -95,7 +95,14 @@ demersal3=as.data.frame(demersal3)
 #~~             i.e., instances of zero detection NOT skipped surveys
 ############################################################################
 
-# NOTE: added 27 season-stations with zero catch, which is 0.35% of season-stations
+
+######
+#       NOTE: the following resulted in the addition of:
+#               22 BS station-season-years without fish detected
+#               1 UCD station-season-years without fish detected
+#       The addition of these 23 zero-catch station-years increased the 
+#       demersal3 dataset by 0.29 %
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~ Bay Study "no_fish_caught"
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -109,6 +116,7 @@ bs_season_number[which(Baystudy$Survey %in% c(3,4,5))]=2
 bs_season_number[which(Baystudy$Survey %in% c(6,7,8))]=3
 bs_season_number[which(Baystudy$Survey %in% c(9,10,11))]=4
 Baystudy = data.frame(data.frame(season_number=bs_season_number), Baystudy)
+Baystudy = Baystudy[which(Baystudy$yr>1979 & Baystudy$yr<2018),]
 
 bs_season_year = Baystudy$yr
 bs_season_year[which(Baystudy$Survey==12)]=
@@ -123,56 +131,38 @@ BayStudyOTR = subset(Baystudy, Baystudy$Method=="Otter trawl")
 bs_no_fish = BayStudyOTR[which(BayStudyOTR$Length_NA_flag=="No fish caught" &
                                  BayStudyOTR$Station %in% bs_sta_above_thresh),]
 
-# Aggregate seasonally; compare total surveys per season per station with
-#       total surveys per season without fish captured
-bs_survey_year_station_no_fish = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                           + season_year + Station, data = bs_no_fish, FUN = length)
-bs_survey_year_station = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                   + season_year + Station, data = BayStudyOTR, FUN = length)
+# Aggregate by survey event; compare total events per survey per year per station to
+#       total events per survey per year per station without fish captured
+bs_survey_station_no_fish = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                                      + season_year + Station, data = bs_no_fish, FUN = unique)
+bs_survey_station = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                              + season_year + Station, data = BayStudyOTR, FUN = unique)
 
-bs_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                    season_year + Station, data = bs_survey_year_station, FUN = length)
-colnames(bs_surveys_per_season)[length(names(bs_surveys_per_season))] = "total_surveys_per_season"
+bs_survey_station_no_fish$event_count = lengths(bs_survey_station_no_fish$SampleID)
+bs_survey_station$event_count = lengths(bs_survey_station$SampleID)
 
-bs_no_fish_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                            season_year + Station,
-                                          data = bs_survey_year_station_no_fish, FUN = length)
-colnames(bs_no_fish_surveys_per_season)[length(names(bs_no_fish_surveys_per_season))] = 
+#~~ Aggregate to season-year resolution
+bs_survey_season_station_no_fish = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                               season_year + Station, 
+                                             data = bs_survey_station_no_fish, FUN = sum)
+bs_survey_season_station = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                       season_year + Station, 
+                                     data = bs_survey_station, FUN = sum)
+
+colnames(bs_survey_season_station)[length(names(bs_survey_season_station))] = 
+  "total_surveys_per_season"
+colnames(bs_survey_season_station_no_fish)[length(names(bs_survey_season_station_no_fish))] = 
   "surveys_without_fish"
 
-bs_no_fish_merged = merge(bs_surveys_per_season, bs_no_fish_surveys_per_season)
-
+bs_no_fish_merged = merge(bs_survey_season_station, bs_survey_season_station_no_fish)
 bs_zero_catch_index = which(bs_no_fish_merged$surveys_without_fish ==
                               bs_no_fish_merged$total_surveys_per_season)
 bs_add_zeros = bs_no_fish_merged[bs_zero_catch_index,]
+bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="2018_1"),]
 
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~     FLAG: Code gets angry about surveys with two dates
-#~~
-#~  BS 102 2017 Summer, BS 317 2017 Summer, and BS 428 1981 Fall have catch 
-#~  data in the LTMRdata
-
-#check on error with 2017_3 bs_102; remove from "no fish caught dataset
-demersal3[which(demersal3$season_yr=="2017_3" & demersal3$Station== 102),]
-bs_add_zeros[which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 102),]
-bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 102),]
-
-#check on error with 2017_3 bs_317; remove from "no fish caught dataset
-demersal3[which(demersal3$season_yr=="2017_3" & demersal3$Station== 317),]
-bs_add_zeros[which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 317),]
-bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="2017_3" & bs_add_zeros$Station== 317),]
-
-#check on error with 1981_4 bs_428; remove from "no fish caught dataset
-demersal3[which(demersal3$season_yr=="1981_4" & demersal3$Station == 428),]
-bs_add_zeros[which(bs_add_zeros$season_yr=="1981_4" & bs_add_zeros$Station == 428),]
-bs_add_zeros = bs_add_zeros[-which(bs_add_zeros$season_yr=="1981_4" & bs_add_zeros$Station == 428),]
-
-#~~     END FLAG:
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# Add events without fish detected to the original "sea" dataset adding 0s for all fishes
-#~~  note 26 BS season-stations were 0 detections; representing 0.50% of total Bay Study season-stations
+# Add events without fish detected to the original "demersal3" dataset adding 0s for all fishes
+dim(bs_add_zeros)[1]/dim(demersal3[which(demersal3$lme=="bs"),])[1]*100
+#~~  note 22 station-years were 0 detections; representing 0.38% of total Bay Study station-season-years
 bs_no_fish_caught = data.frame(season_yr = bs_add_zeros$season_yr,
                                season_number = bs_add_zeros$season_number, 
                                season_year = bs_add_zeros$season_year,
@@ -188,7 +178,12 @@ for(i in 9:length(names(demersal3))){
   colnames(bs_no_fish_caught)[i]=names(demersal3)[i]
 }
 demersal3 = rbind(demersal3,bs_no_fish_caught)
-demersal3 = demersal3[order(demersal3$sta_lme, demersal3$season_year),]
+demersal3 = demersal3[order(demersal3$sta_lme, demersal3$season_yr),]
+
+demersal3[which(demersal3$season_year=="1981" & demersal3$sta_lme=="bs_104"),]
+
+# Check for duplicate study-station-years; this shoudl return "character(0)" if all is well
+paste(demersal3$season_yr, demersal3$sta_lme, sep="_")[duplicated(paste(demersal3$season_yr, demersal3$sta_lme, sep="_"))]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~ UC Davis Suisun Marsh Study "no_fish_caught"
@@ -201,6 +196,7 @@ ucd_season_number[which(Suisun$Survey %in% c(3,4,5))]=2
 ucd_season_number[which(Suisun$Survey %in% c(6,7,8))]=3
 ucd_season_number[which(Suisun$Survey %in% c(9,10,11))]=4
 Suisun = data.frame(data.frame(season_number=ucd_season_number), Suisun)
+Suisun = Suisun[which(Suisun$yr>1979 & Suisun$yr<2018),]
 
 ucd_season_year = Suisun$yr
 ucd_season_year[which(Suisun$Survey==12)]=
@@ -210,36 +206,43 @@ Suisun$season_year=ucd_season_year
 ucd_season_yr = paste(Suisun$season_year, Suisun$season_number, sep="_")
 Suisun = data.frame(data.frame(season_yr=ucd_season_yr), Suisun)
 
-
 # Identify survey events without fish detected
+SuisunOTR = subset(Suisun, Suisun$Method=="Otter trawl")
+ucd_no_fish = SuisunOTR[which(SuisunOTR$Length_NA_flag=="No fish caught" &
+                                SuisunOTR$Station %in% ucd_sta_above_thresh),]
 
-ucd_no_fish = Suisun[which(Suisun$Length_NA_flag=="No fish caught" &
-                             Suisun$Station %in% ucd_sta_above_thresh),]
+# Aggregate by survey event; compare total events per survey per year per station to
+#       total events per survey per year per station without fish captured
+ucd_survey_station_no_fish = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                                       + season_year + Station, data = ucd_no_fish, FUN = unique)
+ucd_survey_station = aggregate(SampleID ~ Source + season_number  + season_yr + Survey 
+                               + season_year + Station, data = SuisunOTR, FUN = unique)
+#the following checks for 2 sample events durign a given survey (month)
+ucd_survey_station_no_fish$event_count = lengths(ucd_survey_station_no_fish$SampleID)
+ucd_survey_station$event_count = lengths(ucd_survey_station$SampleID)
 
-# Aggregate seasonally; compare total surveys per season per station with
-#       total surveys per season without fish captured
-ucd_survey_year_station_no_fish = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                            + season_year + Station, data = ucd_no_fish, FUN = length)
-ucd_survey_year_station = aggregate(yr ~ Source + season_number  + season_yr + Survey 
-                                    + season_year + Station, data = Suisun, FUN = length)
+#~~ Aggregate to season-year resolution
+ucd_survey_season_station_no_fish = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                                season_year + Station, 
+                                              data = ucd_survey_station_no_fish, FUN = sum)
+ucd_survey_season_station = aggregate(event_count ~ Source + season_number  + season_yr +  
+                                        season_year + Station, 
+                                      data = ucd_survey_station, FUN = sum)
 
-ucd_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                     season_year + Station, data = ucd_survey_year_station, FUN = length)
-colnames(ucd_surveys_per_season)[length(names(ucd_surveys_per_season))] = "total_surveys_per_season"
-
-ucd_no_fish_surveys_per_season = aggregate(Survey ~ Source + season_number  + season_yr +  
-                                             season_year + Station,
-                                           data = ucd_survey_year_station_no_fish, FUN = length)
-colnames(ucd_no_fish_surveys_per_season)[length(names(ucd_no_fish_surveys_per_season))] = 
+colnames(ucd_survey_season_station)[length(names(ucd_survey_season_station))] = 
+  "total_surveys_per_season"
+colnames(ucd_survey_season_station_no_fish)[length(names(ucd_survey_season_station_no_fish))] = 
   "surveys_without_fish"
 
-ucd_no_fish_merged = merge(ucd_surveys_per_season, ucd_no_fish_surveys_per_season)
-
-ucd_zero_catch_index = which(ucd_no_fish_merged$surveys_without_fish == ucd_no_fish_merged$total_surveys_per_season)
+ucd_no_fish_merged = merge(ucd_survey_season_station, ucd_survey_season_station_no_fish)
+ucd_zero_catch_index = which(ucd_no_fish_merged$surveys_without_fish ==
+                               ucd_no_fish_merged$total_surveys_per_season)
 ucd_add_zeros = ucd_no_fish_merged[ucd_zero_catch_index,]
+ucd_add_zeros = ucd_add_zeros[-which(ucd_add_zeros$season_yr=="2018_1"),]
 
-# Add events without fish detected to the original "sea" dataset adding 0s for all fishes
-#~~  note 1 season-stations had 0 detections; representing 0.04% of total season-stations
+# Add events without fish detected to the original "demersal3" dataset adding 0s for all fishes
+dim(ucd_add_zeros)[1]/dim(demersal3[which(demersal3$lme=="ucd"),])[1]*100
+#~~  note 1 station-years were 0 detections; representing 0.04% of total UC Davis Suisun station-season-years
 ucd_no_fish_caught = data.frame(season_yr = ucd_add_zeros$season_yr,
                                 season_number = ucd_add_zeros$season_number, 
                                 season_year = ucd_add_zeros$season_year,
@@ -255,7 +258,12 @@ for(i in 9:length(names(demersal3))){
   colnames(ucd_no_fish_caught)[i]=names(demersal3)[i]
 }
 demersal3 = rbind(demersal3,ucd_no_fish_caught)
-demersal3 = demersal3[order(demersal3$sta_lme, demersal3$season_year),]
+demersal3 = demersal3[order(demersal3$sta_lme, demersal3$season_yr),]
+
+demersal3[which(demersal3$season_year=="2005" & demersal3$sta_lme=="ucd_MZ1"),]
+
+# Check for duplicate study-station-years; this shoudl return "character(0)" if all is well
+paste(demersal3$season_yr, demersal3$sta_lme, sep="_")[duplicated(paste(demersal3$season_yr, demersal3$sta_lme, sep="_"))]
 
 
 ############################################################################
