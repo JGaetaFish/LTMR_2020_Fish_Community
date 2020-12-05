@@ -18,6 +18,7 @@ library(PTAk)
 library(cluster)
 library(sfsmisc)
 library(devtools)
+library(dplyr)
 
 ############################################################################
 #~~     STEP 1: set data aggregation and cleaning parameters, then run data 
@@ -495,13 +496,13 @@ axis(1, k.best.silhouette,  col.axis="red3", col.ticks = "red3", font=2,
      line = -0.7)
 axis(1, k.best.silhouette+1, "(optimum k)", col="red3",
      font=2, col.axis="red3", line = 0.75, tick = FALSE)
-lines(y = c(0,asw[asw_maxima[2]]), x=c(asw_maxima[2], asw_maxima[2]),
+lines(y = c(0,asw[asw_maxima[3]]), x=c(asw_maxima[3], asw_maxima[3]),
       col="darkgreen", lwd=4, lend=1)
-axis(1, asw_maxima[2],  col.axis="darkgreen", col.ticks = "darkgreen",
+axis(1, asw_maxima[3],  col.axis="darkgreen", col.ticks = "darkgreen",
      font=2, labels=FALSE)
-axis(1, asw_maxima[2],  col.axis="darkgreen", col.ticks = "darkgreen",
+axis(1, asw_maxima[3],  col.axis="darkgreen", col.ticks = "darkgreen",
      font=2, line=-0.7)
-axis(1, asw_maxima[2]-1, "(alternative k)", col="darkgreen",
+axis(1, asw_maxima[3]-1, "(alternative k)", col="darkgreen",
      font=2, col.axis="darkgreen", line = 0.75, tick = FALSE)
 # dev.off()
 
@@ -536,8 +537,7 @@ taxa_cluster_df=taxa_cluster_df[order(taxa_cluster_df$dendr_order),]
 clust_col_order=taxa_cluster_df$cluster[!duplicated(taxa_cluster_df$cluster)]
 taxa_dendro_black=as.dendrogram(hclust.avg)
 taxa_dendro_black = taxa_dendro_black %>%
-  set("branches_lwd", 1.5) %>%
-  set("labels_cex", 0.9) 
+  set("labels_cex", value=0.9) 
 
 par(mfrow=c(1,1), mar=c(12,1.5,1.5,1.5)+0.1)
 plot(taxa_dendro_black, xaxt='n', axes=FALSE, lwd=5)
