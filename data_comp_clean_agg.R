@@ -33,7 +33,11 @@ if(fall_only == TRUE){
   threshold = 38 # minimum number of years a station is surveyed to be included
 }
 
-catch_cutoff_threshold = 1 #   observation minimum per month
+check_exists=function(x) tryCatch(if(class(x) == 'logical') 1 else 1, error=function(e) 0) 
+
+if(check_exists(catch_cutoff_threshold)==0){
+  catch_cutoff_threshold = 1 #   observation minimum per month
+}
 min_length_threshold_40=TRUE # applying minimum length threshold of 40mm
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
